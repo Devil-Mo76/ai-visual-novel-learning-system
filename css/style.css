@@ -363,6 +363,23 @@ body {
   background: var(--accent-dark);
 }
 
+/* 编辑剧本按钮：与「进入学习」按钮视觉完全一致 */
+.doc-edit {
+  cursor: pointer;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.doc-edit:hover {
+  background: var(--accent-dark);
+}
+
 .doc-info {
   flex: 1;
   margin-right: 12px;
