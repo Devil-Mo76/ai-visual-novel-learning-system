@@ -467,6 +467,16 @@
       Render.toast(on ? "自动播放已开启" : "自动播放已关闭");
     });
 
+    // 只看错题开关：开启后状态机跳过非错题步骤，仅播放答错题目所在章节（针对性复习）
+    $("btn-only-wrong").addEventListener("click", async (e) => {
+      const wasOn = Modes.onlyWrong;
+      await Streaming.toggleOnlyWrong();
+      e.target.classList.toggle("active", Modes.onlyWrong);
+      if (wasOn === Modes.onlyWrong && !Modes.onlyWrong) {
+        e.target.classList.remove("active");
+      }
+    });
+
     // 隐藏/显示对话栏
     $("btn-hide-dialog").addEventListener("click", (e) => {
       const hidden = Modes.toggleDialog();

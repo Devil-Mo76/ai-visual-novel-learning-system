@@ -41,6 +41,11 @@ const Streaming = {
 
   /* —— 播放当前节点 —— */
   playCurrent() {
+    // 只看错题：非错题步骤一律跳过，向前跳到下一道错题
+    if (Modes.onlyWrong && this._wrongKeys && !this._isWrongStep(Modes.chapterIndex, Modes.stepIndex)) {
+      this._advanceToNextWrong(Modes.chapterIndex, Modes.stepIndex);
+      return;
+    }
     const ch = Modes.currentScript.chapters[Modes.chapterIndex];
     if (!ch || !ch.steps.length) return this._finishScript();
     const step = ch.steps[Modes.stepIndex];
@@ -282,6 +287,11 @@ const Streaming = {
   advance() {
     if (window.Lecture && Lecture.active) return;   // 讲师模式中禁止推进剧情
     if (Modes.pausedForQuestion) return;        // 弹题中禁止推进（用「继续」按钮）
+    // 只看错题：跳过当前非错题步骤，直接跳到下一道错题
+    if (Modes.onlyWrong && this._wrongKeys) {
+      this._advanceToNextWrong(Modes.chapterIndex, Modes.stepIndex);
+      return;
+    }
     if (Typing.isTyping()) {
       Typing.skipToEnd();
       return;
@@ -306,6 +316,85 @@ const Streaming = {
     } else {
       this._finishScript();
     }
+  },
+
+  /* —— 只看错题模式 —— */
+  // 拉取错题列表并建立「已错 step 键集合」用于快速判断
+  async _loadWrongQuestions() {
+    if (!Modes.scriptId) return false;
+    try {
+      Modes.wrongQuestions = await Api.wrongQuestions(Modes.scriptId);
+    } catch {
+      Modes.wrongQuestions = [];
+    }
+    const set = new Set();
+    for (const w of Modes.wrongQuestions) {
+      set.add(`${w.chapter_index}:${w.step_index}`);
+    }
+    this._wrongKeys = set;
+    return set.size > 0;
+  },
+
+  // 当前 step 是否为错题（仅题目 step 有意义）
+  _isWrongStep(chIndex, stepIndex) {
+    return this._wrongKeys && this._wrongKeys.has(`${chIndex}:${stepIndex}`);
+  },
+
+  // 从 (chIndex, stepIndex) 开始向前找下一道错题并播放其所在章节
+  _advanceToNextWrong(chIndex, stepIndex) {
+    const chapters = Modes.currentScript && Modes.currentScript.chapters;
+    if (!chapters || !this._wrongKeys) {
+      this._finishScript();
+      return;
+    }
+    // 优先在当前章节内向后找
+    const ch = chapters[chIndex];
+    if (ch) {
+      for (let s = stepIndex + 1; s < ch.steps.length; s++) {
+        if (this._wrongKeys.has(`${chIndex}:${s}`)) {
+          Modes.stepIndex = s;
+          this._applyChapter(chIndex, false);
+          this.playCurrent();
+          return;
+        }
+      }
+    }
+    // 当前章找不到，向后查后续章节
+    for (let c = chIndex + 1; c < chapters.length; c++) {
+      const steps = chapters[c].steps || [];
+      for (let s = 0; s < steps.length; s++) {
+        if (this._wrongKeys.has(`${c}:${s}`)) {
+          Modes.stepIndex = s;
+          this._applyChapter(c, false);
+          this.playCurrent();
+          return;
+        }
+      }
+    }
+    // 全部遍历完仍无错题：结束
+    this._finishScript();
+  },
+
+  // 开/关「只看错题」：开启时拉取错题列表并跳到第一道错题
+  async toggleOnlyWrong() {
+    Modes.onlyWrong = !Modes.onlyWrong;
+    if (!Modes.onlyWrong) {
+      Render.toast("已退出只看错题模式。");
+      return;
+    }
+    if (!Modes.scriptId) {
+      Modes.onlyWrong = false;
+      Render.toast("请先进入学习再开启只看错题。");
+      return;
+    }
+    const has = await this._loadWrongQuestions();
+    if (!has) {
+      Modes.onlyWrong = false;
+      Render.toast("暂无错题——先去作答，答错的题目会自动收进复习列表。");
+      return;
+    }
+    Render.toast(`只看错题模式已开启，共 ${Modes.wrongQuestions.length} 道错题待复习。`);
+    this._advanceToNextWrong(-1, -1);
   },
 
   /* —— 播放结束 —— */
