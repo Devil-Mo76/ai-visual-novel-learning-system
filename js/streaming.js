@@ -156,7 +156,11 @@ const Streaming = {
         quiz_type: "choice",
         picked_index: picked,
         quote: "",
-      }).catch(() => {});
+      }).catch((err) => {
+        // 上报失败不静默吞掉：提示用户，避免「以为记了学习报告其实没记」。
+        // 常见原因：后端未启动 / 网络中断。作答本身不影响继续播放。
+        Render.toast(`答题记录保存失败：${err.message}（不影响本次判断，可稍后重看报告）`);
+      });
     }
 
     this._finishAnswer(correct, step, correctLabel, undefined, step.choices[picked]);
