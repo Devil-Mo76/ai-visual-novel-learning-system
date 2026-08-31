@@ -141,6 +141,19 @@ const Streaming = {
     Render.el.qChoices().querySelectorAll(".q-choice").forEach((b) => (b.disabled = true));
     btn.classList.add(correct ? "q-choice-right" : "q-choice-wrong");
 
+    // 选择题本地判定后同样上报后端落库（学习报告 / 错题本的数据源）。
+    // 选择题无需等 AI 判题，异步上报即可，不阻塞反馈展示。
+    if (Modes.scriptId != null) {
+      Api.verifyAnswer({
+        script_id: Modes.scriptId,
+        chapter_index: Modes.chapterIndex,
+        step_index: Modes.stepIndex,
+        quiz_type: "choice",
+        picked_index: picked,
+        quote: "",
+      }).catch(() => {});
+    }
+
     this._finishAnswer(correct, step, correctLabel, undefined, step.choices[picked]);
   },
 
