@@ -31,6 +31,7 @@
   const Report = {
     _radarChart: null,
     _barChart: null,
+    _treeChart: null,
 
     /* —— 打开面板：拉取数据并渲染两张图 —— */
     async open(scriptId) {
@@ -45,12 +46,24 @@
         const data = await Api.analyticsOverview(scriptId);
         $("report-modal").classList.remove("hidden");
 
-        // 没有任何作答记录：展示空态（图表暂不渲染）
+        // 思维导图始终渲染：拉取剧本完整 chapters（章节 → 步骤台词/题目 → 知识点树），
+        // 不依赖作答记录，即使尚无答题数据也展示资料的知识结构。
+        let scriptChapters = [];
+        try {
+          const script = await Api.getScript(scriptId);
+          scriptChapters = script.chapters || [];
+        } catch {
+          scriptChapters = [];
+        }
+        this._renderTree(scriptChapters);
+
+        // 没有任何作答记录：展示空态（雷达/柱状图暂不渲染，思维导图已渲染）
         if (!data.chapters_accuracy || !data.chapters_accuracy.some((c) => c.total > 0)) {
-          desc.textContent = `《${data.script_title}》暂无可汇总的答题数据`;
+          desc.textContent = `《${data.script_title}》暂无可汇总的答题数据（上方为思维导图）`;
           stats.classList.add("hidden");
           empty.classList.remove("hidden");
-          this._dispose();
+          this._disposeRadar(null);
+          this._disposeBar(null);
           return;
         }
 
@@ -219,6 +232,86 @@
       });
     },
 
+    /* —— 思维导图：剧本 chapters → 章节标题 → 步骤台词/题目（知识点树）—— */
+    _renderTree(scriptChapters) {
+      const el = $("report-tree");
+      this._disposeTree(el);
+
+      if (typeof echarts === "undefined") {
+        el.innerHTML = '<div style="color:var(--ink-soft);text-align:center;padding-top:60px">图表库 ECharts 未加载成功（离线 vendor/echarts.min.js 缺失？）</div>';
+        return;
+      }
+      if (!scriptChapters || !scriptChapters.length) {
+        el.innerHTML = '<div style="color:var(--ink-soft);text-align:center;padding-top:60px">暂无可展示的剧本知识点结构</div>';
+        return;
+      }
+
+      const chart = echarts.init(el);
+      this._treeChart = chart;
+
+      // 根节点：剧本标题；每章一个一层子节点；章内步骤作为二层叶子
+      const chapters = scriptChapters.map((ch) => ({
+        name: ch.title || "未命名章节",
+        children: (ch.steps || []).slice(0, 12).map((s, i) => {
+          const label =
+            s.type === "question"
+              ? `📝 ${(s.text || "题目").slice(0, 22)}`
+              : (s.text || "台词").slice(0, 22);
+          return {
+            name: label,
+            value: s.type === "question" ? "题目" : "台词",
+          };
+        }),
+      }));
+
+      chart.setOption({
+        tooltip: {
+          trigger: "item",
+          triggerOn: "mousemove",
+          backgroundColor: "#2a2a35",
+          borderColor: "transparent",
+          textStyle: { color: "#fff" },
+          formatter: (p) => {
+            const d = p.data;
+            return d.value
+              ? `<b>${d.name}</b><br/>${d.value === "题目" ? "弹题步骤" : "台词步骤"}`
+              : `<b>${p.name}</b><br/>章节`;
+          },
+        },
+        series: [
+          {
+            type: "tree",
+            data: chapters,
+            left: 30,
+            right: 80,
+            top: 30,
+            bottom: 30,
+            symbol: "circle",
+            symbolSize: 8,
+            layout: "orthogonal",
+            orient: "LR",              // 从左往右展开：章节在左，步骤叶子向右
+            initialTreeDepth: 2,
+            roam: true,                // 可缩放/拖动，章节多时便于查看
+            expandAndCollapse: true,   // 点击节点折叠/展开
+            label: {
+              position: "top",
+              verticalAlign: "middle",
+              align: "left",
+              fontSize: 12,
+              color: "#2a2a35",
+            },
+            lineStyle: {
+              color: "#d8d5cd",
+              width: 1.5,
+            },
+            itemStyle: {
+              color: "#7c6bd5",
+            },
+          },
+        ],
+      });
+    },
+
     _disposeRadar(el) {
       if (this._radarChart) {
         this._radarChart.dispose();
@@ -233,9 +326,17 @@
       }
       if (el) el.innerHTML = "";
     },
+    _disposeTree(el) {
+      if (this._treeChart) {
+        this._treeChart.dispose();
+        this._treeChart = null;
+      }
+      if (el) el.innerHTML = "";
+    },
     _dispose() {
       this._disposeRadar(null);
       this._disposeBar(null);
+      this._disposeTree(null);
     },
 
     /* —— 绑定界面事件 —— */

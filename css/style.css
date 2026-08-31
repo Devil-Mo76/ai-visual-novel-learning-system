@@ -1378,6 +1378,11 @@ body {
   height: 300px;                    /* 雷达/柱状固定高度，适配 ECharts 初始化 */
 }
 
+/* 思维导图：树形分支需要的视口比普通图更高，便于展开/缩放 */
+.report-tree {
+  height: 420px;
+}
+
 .report-empty {
   padding: 30px 0;
   text-align: center;
