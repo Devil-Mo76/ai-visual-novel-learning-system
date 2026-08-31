@@ -1031,21 +1031,27 @@ body {
 
 /* ─── 编辑剧本弹窗 ─── */
 .edit-card {
-  width: min(900px, 94vw);
-  max-height: 88vh;
-  overflow-y: auto;
+  /* 自适应屏幕：宽不超过视口 92%，高占满视口 90%，随屏弹性伸缩 */
+  width: min(900px, 92vw);
+  height: 90vh;
+  max-height: 640px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .edit-desc {
   font-size: 13px;
   color: var(--ink);
   font-weight: 700;
   margin-bottom: 8px;
+  flex-shrink: 0;
 }
 .edit-hint {
   font-size: 12px;
   color: var(--ink-soft);
   line-height: 1.6;
   margin-bottom: 12px;
+  flex-shrink: 0;
 }
 .edit-hint code {
   background: #f0edf7;
@@ -1055,8 +1061,10 @@ body {
   color: var(--accent-dark);
 }
 .edit-textarea {
+  /* 吃掉卡片内剩余高度（flex:1 自适应），小屏自动缩、大屏自动放大 */
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  min-height: 46vh;
   resize: vertical;
   font-family: Consolas, "Courier New", monospace;
   font-size: 13px;
@@ -1078,12 +1086,14 @@ body {
   font-size: 13px;
   line-height: 1.6;
   white-space: pre-wrap;
+  flex-shrink: 0;
 }
 .edit-actions {
   margin-top: 14px;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 /* 讲师模式：复用底部对话栏 #dialog-box 变身辅导栏（不再用独立的弹题框面板），
