@@ -1061,11 +1061,12 @@ body {
   color: var(--accent-dark);
 }
 .edit-textarea {
-  /* 吃掉卡片内剩余高度（flex:1 自适应），小屏自动缩、大屏自动放大 */
+  /* 吃掉卡片内剩余高度（flex:1 自适应），小屏自动缩、大屏自动放大；
+     禁止手动拖拽，完全由屏幕大小决定尺寸 */
   flex: 1;
   min-height: 0;
   width: 100%;
-  resize: vertical;
+  resize: none;
   font-family: Consolas, "Courier New", monospace;
   font-size: 13px;
   line-height: 1.5;
