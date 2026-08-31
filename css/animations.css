@@ -1,0 +1,93 @@
+/* ═══════════════════════════════════════════════
+ * animations.css — 视觉小说过渡动画
+ * ═══════════════════════════════════════════════ */
+
+/* 立绘淡入 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 立绘进入位置 */
+@keyframes spriteIn {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.sprite {
+  animation: spriteIn 0.6s ease-out;
+}
+
+/* 说话者立绘轻轻的上下浮动，增强"人物在呼吸"的临场感 */
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+/* 放在 .sprite 之后声明，覆盖 spriteIn，让说话者持续浮动 */
+.sprite.sprite-on {
+  animation: floaty 3s ease-in-out infinite;
+}
+
+/* 背景淡入（章节切换时） */
+@keyframes bgFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 对话栏上滑 */
+@keyframes dialogSlide {
+  from { transform: translateY(18px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.dialog-box {
+  animation: dialogSlide 0.3s ease-out;
+}
+
+/* 弹题窗弹出 */
+@keyframes quizPop {
+  from { transform: translate(-50%, -46%); opacity: 0; }
+  to   { transform: translate(-50%, -50%); opacity: 1; }
+}
+
+.question-box {
+  animation: quizPop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+/* 讲师模式底部面板使用专属上滑动画（见 style.css，覆盖 quizPop）；
+   聊天气泡新消息轻轻上浮淡入，流式接收时更自然 */
+@keyframes bubbleIn {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.lecture-chat .lec-tutor,
+.lecture-chat .lec-user {
+  animation: bubbleIn 0.24s ease-out;
+}
+
+/* 章节条淡入 */
+.chapter-bar {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* 弹窗淡入 */
+@keyframes modalFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal {
+  animation: modalFade 0.2s ease-out;
+}
+
+/* 存档格顺序浮现 */
+.slot-cell {
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* 「生成剧本」等待时的小转圈 */
+.spin::before {
+  content: "正在生成"; /* 文字由 status 自带，这里仅是占位避免闪烁 */
+}

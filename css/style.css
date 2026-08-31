@@ -1,0 +1,1781 @@
+/* ═══════════════════════════════════════════════
+ * style.css — 全局布局与视觉小说风格
+ * ═══════════════════════════════════════════════ */
+
+:root {
+  --ink: #2a2a35;
+  --ink-soft: #55555f;
+  --line: #d8d5cd;
+  --panel: #f4f1ea;
+  --accent: #7c6bd5;
+  --accent-dark: #5f51ab;
+  --good: #2e7d32;
+  --bad: #c62828;
+  --dialog-height: 190px;
+  --base-font: 16px;               /* 全局字体基准，设置里可调节 */
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  color: var(--ink);
+}
+
+body {
+  background: #14141d;
+}
+
+/* ────────── 屏幕容器 ────────── */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: none;
+}
+
+.screen.active {
+  display: block;
+}
+
+/* ────────── 主菜单 ────────── */
+#screen-menu {
+  background: linear-gradient(160deg, #16161f 0%, #24243a 60%, #33295e 100%);
+  color: #f4f1ea;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 主菜单背景：前端背景图 + 深色遮罩（保证浅色文字可读）*/
+.menu-backdrop {
+  position: absolute;
+  inset: 0;
+  background-image: url("../images/前端背景/前端背景.png");
+  background-size: cover;
+  background-position: center;
+  z-index: 1;
+}
+
+.menu-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(165deg, rgba(20, 20, 30, 0.84) 0%, rgba(26, 25, 46, 0.7) 55%, rgba(51, 41, 94, 0.66) 100%);
+}
+
+#screen-menu.active {
+  display: flex;
+}
+
+.menu-container {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  max-width: 560px;
+  padding: 24px;
+}
+
+.menu-title {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 12px rgba(124, 107, 213, 0.55);
+}
+
+.menu-subtitle {
+  font-size: 15px;
+  color: #b9b3ca;
+  margin-bottom: 44px;
+  letter-spacing: 2px;
+}
+
+.menu-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.menu-btn {
+  cursor: pointer;
+  border: 1px solid rgba(244, 241, 234, 0.25);
+  background: rgba(244, 241, 234, 0.06);
+  color: #f4f1ea;
+  font-size: 18px;
+  letter-spacing: 6px;
+  padding: 14px 0;
+  border-radius: 10px;
+  transition: all 0.15s ease;
+}
+
+.menu-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.menu-status {
+  margin-top: 26px;
+  font-size: 13px;
+  color: #9f9ab5;
+  min-height: 20px;
+}
+
+/* ────────── 通用屏头 ────────── */
+.screen-header {
+  height: 60px;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  position: sticky;              /* 滚动时标题栏吸顶，内容区在其下方滚动 */
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.screen-header h2 {
+  font-size: 20px;
+  letter-spacing: 2px;
+}
+
+.btn-back {
+  cursor: pointer;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: var(--ink);
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.btn-back:hover {
+  background: #eae5da;
+}
+
+/* ────────── 开始学习 / 资料库 ────────── */
+#screen-library {
+  background-image: url("../images/前端背景/前端背景.png");  /* 前端背景图（cover + 居中） */
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;                 /* 整屏自适应，不让页面出现滚轮 */
+}
+
+.library-body {
+  height: calc(100% - 60px);        /* 100% 视高，扣掉吸顶标题栏 60px */
+  display: flex;
+  gap: 18px;
+  padding: 18px 22px;
+  box-sizing: border-box;
+  align-items: stretch;
+}
+
+/* 左右双栏：左侧导入资料，右侧现有学习资料（一屏放平，无需滚动）*/
+.upload-card {
+  flex: 0 0 360px;                  /* 左侧固定宽度 */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.library-card {
+  flex: 1 1 auto;                   /* 右侧占满剩余空间 */
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 资料列表自身内部滚动（整页不动，只滚列表区）*/
+.library-card .doc-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  max-height: none;                 /* 覆盖基础样式里的 280px 上限，允许拉伸填满 */
+}
+
+/* 窄屏自动退回上下堆叠（保留内部分栏）*/
+@media (max-width: 860px) {
+  .library-body {
+    height: auto;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .upload-card,
+  .library-card {
+    flex: none;
+  }
+  .library-card .doc-list {
+    max-height: 260px;
+    flex: none;
+    overflow-y: auto;
+  }
+}
+
+.upload-card,
+.library-card {
+  background: rgba(255, 255, 255, 0.82);   /* 半透明毛玻璃，叠在前端背景图上 */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(180, 172, 200, 0.4);
+  border-radius: 14px;
+  padding: 22px;
+}
+
+.upload-title,
+.library-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.upload-hint {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 18px;
+}
+
+#file-input {
+  width: 100%;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.btn-primary {
+  cursor: pointer;
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  transition: background 0.15s;
+}
+
+.btn-primary:hover {
+  background: var(--accent-dark);
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#upload-status,
+#gen-status,
+#settings-status {
+  display: block;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  min-height: 18px;
+}
+
+.library-subtitle {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+
+.doc-list {
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.doc-item {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.doc-item:hover {
+  border-color: var(--accent);
+}
+
+.doc-item.doc-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(124, 107, 213, 0.25);
+}
+
+.doc-item.doc-empty {
+  cursor: default;
+  color: var(--ink-soft);
+  text-align: center;
+  padding: 12px 14px;
+}
+
+/* 卡片主体：左侧信息，右侧操作按钮 */
+.doc-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  gap: 10px;
+}
+
+/* 窄屏时右侧按钮区另起一行，避免挤压文本 */
+@media (max-width: 620px) {
+  .doc-main {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .doc-info {
+    width: 100%;
+  }
+}
+
+/* 右侧操作区：进入学习 + 删除 并排 */
+.doc-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.doc-enter {
+  cursor: pointer;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.doc-enter:hover {
+  background: var(--accent-dark);
+}
+
+.doc-info {
+  flex: 1;
+  margin-right: 12px;
+  min-width: 0;
+}
+
+.doc-name {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.doc-meta {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 4px 0;
+}
+
+.doc-preview {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 删除按钮：红色圆形小按钮，悬停加深 */
+.doc-del {
+  cursor: pointer;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #e0c3c3;
+  background: #faf2f2;
+  color: #b54444;
+  font-size: 14px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.doc-del:hover {
+  background: #c62828;
+  border-color: #c62828;
+  color: #fff;
+}
+
+/* 学习背景说明框（需求：告诉 AI 文档用途，不改变剧本规则）*/
+.goal-box {
+  margin-top: 16px;
+  padding: 14px;
+  background: #f6f0f3;
+  border: 1px solid #e2d3dc;
+  border-radius: 10px;
+}
+
+.goal-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 70px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: #fff;
+}
+
+.goal-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.goal-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* 生成栏：章节数选择 + 生成按钮 */
+.doc-generate-bar {
+  display: flex;
+  flex-wrap: wrap;               /* 窄屏时允许换行，不被挤出 */
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px;
+  background: #f6f3ec;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.gen-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.gen-select {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.gen-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* 拖拽上传区 */
+.drop-area {
+  margin: 14px 0;
+  border: 2px dashed #c9c5d8;
+  border-radius: 12px;
+  padding: 22px 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: #f7f6fc;
+}
+
+.drop-area:hover,
+.drop-area.drag-hover {
+  border-color: var(--accent);
+  background: #efeefd;
+}
+
+.drop-icon {
+  font-size: 34px;
+  margin-bottom: 6px;
+}
+
+.drop-text {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* ────────── 设置 ────────── */
+#screen-settings {
+  background-image: url("../images/前端背景/前端背景.png");  /* 前端背景图（cover + 居中） */
+  background-size: cover;
+  background-position: center;
+}
+
+/* 需求3：设置屏自适应网格布局（宽屏并排 / 窄屏堆叠，不再挤成一列） */
+.settings-layout {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 22px 24px 44px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.settings-group {
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(180, 172, 200, 0.4);
+  border-radius: 14px;
+  padding: 18px 22px;
+  box-sizing: border-box;
+}
+
+.group-conn {
+  grid-column: 1 / -1;          /* 连接设置占满整行 */
+}
+
+.group-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--accent-dark);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (max-width: 720px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+    padding: 16px 14px 36px;
+  }
+  .group-conn {
+    grid-column: auto;
+  }
+}
+
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 18px 0 6px;
+}
+
+.field-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.field-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 6px;
+}
+
+.settings-actions {
+  margin-top: 26px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ────────── 播放器 ────────── */
+#screen-player {
+  background: #101019;
+}
+
+.bg-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transition: all 0.8s ease;
+}
+
+/* 角色立绘（单人轮播，占满全屏的视觉小说式人物）
+   需求5 + 优化：人物按图片比例放满整屏、底边对齐，
+   像在游戏中站在你面前直接对话。用 margin:auto 居中，
+   避免 transform 位置被 floaty/spriteIn 动画覆盖而偏移。*/
+.sprite {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  bottom: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  transition: opacity 0.3s ease;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2;
+}
+
+/* 单人轮播状态：只显示当前说话者（用 display 隐藏，避免被内联 opacity 覆盖）*/
+.sprite-on {
+  display: block;
+}
+
+.sprite-off {
+  display: none;
+}
+
+/* 讲师立绘（专属辅导角色，与双人同屏位置但只在讲师模式显示） */
+.sprite-lecturer {
+  z-index: 3;   /* 高于对话栏，讲师模式时单独占屏 */
+}
+
+/* 章节条 */
+.chapter-bar {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.45);
+  color: #f4f1ea;
+  font-size: 14px;
+  letter-spacing: 2px;
+  padding: 8px 22px;
+  border-radius: 999px;
+  z-index: 5;
+  backdrop-filter: blur(4px);
+  opacity: 1;
+  transition: opacity 0.4s;
+}
+
+/* 对话栏 */
+.dialog-box {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  bottom: calc(var(--dialog-height) + 10px);
+  height: var(--dialog-height);
+  background: linear-gradient(180deg, rgba(244, 241, 234, 0.97), rgba(244, 241, 234, 0.96));
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 16px 22px;
+  z-index: 4;
+  display: block;
+}
+
+.dialog-box.dialog-hidden {
+  display: none;
+}
+
+.dialog-name {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+
+.dialog-text {
+  font-size: calc(var(--base-font) + 4px);   /* 基于全局基准，随设置缩放 */
+  line-height: 1.9;
+  min-height: 60px;
+}
+
+.dialog-done .dialog-text {
+  color: var(--accent-dark);
+}
+
+/* 底部功能栏 */
+.control-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #191922;
+  z-index: 6;
+  padding: 0 18px;
+}
+
+.ctl-btn {
+  cursor: pointer;
+  background: #262633;
+  border: 1px solid #3a3a4b;
+  color: #e6e3f5;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+
+.ctl-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.ctl-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.ctl-btn:disabled,
+.ctl-placeholder {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ctl-sep {
+  width: 1px;
+  height: 22px;
+  background: #3a3a4b;
+}
+
+/* 讲师入口：主界面右侧悬浮按钮 */
+.lecture-fab {
+  position: absolute;
+  right: 14px;
+  top: 46%;
+  transform: translateY(-50%);
+  z-index: 9;
+  cursor: pointer;
+  border: 1px solid rgba(244, 241, 234, 0.35);
+  background: rgba(20, 20, 30, 0.82);
+  color: #f4f1ea;
+  font-size: 14px;
+  letter-spacing: 1px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.lecture-fab:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ────────── 弹题框 ────────── */
+.question-box {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, 88vw);
+  background: #fbf9f4;
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  padding: 26px;
+  z-index: 8;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.q-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+
+.q-asker {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.q-text {
+  font-size: calc(var(--base-font) + 1px);
+  font-weight: 700;
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+.q-choices {
+  display: grid;
+  gap: 10px;
+}
+
+.q-choice {
+  cursor: pointer;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 15px;
+  transition: all 0.15s;
+}
+
+.q-choice:hover {
+  border-color: var(--accent);
+}
+
+.q-choice:disabled {
+  cursor: not-allowed;
+}
+
+.q-choice-right {
+  border-color: var(--good) !important;
+  background: #e8f5e9 !important;
+  color: var(--good);
+}
+
+.q-choice-wrong {
+  border-color: var(--bad) !important;
+  background: #ffebee !important;
+  color: var(--bad);
+}
+
+.q-feedback {
+  margin-top: 14px;
+  border-top: 1px dashed var(--line);
+  padding-top: 14px;
+}
+
+.q-fb-head {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.q-fb-head.fb-ok {
+  color: var(--good);
+}
+
+.q-fb-head.fb-bad {
+  color: var(--bad);
+}
+
+/* 答错满 3 次亮出的「正确答案」提示（强调色 + 醒目框） */
+.q-fb-head.fb-answer {
+  color: var(--accent-dark);
+}
+
+.fb-answer-block {
+  padding: 12px 14px;
+  margin-top: 8px;
+  background: rgba(124, 107, 213, 0.10);
+  border: 1px dashed var(--accent);
+  border-radius: 8px;
+  font-size: calc(var(--base-font) + 1px);
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+/* 重试提示（答错后剩余次数） */
+.q-fb-hint {
+  color: var(--bad);
+}
+
+.q-fb-explain.fb-hint {
+  color: var(--bad);
+}
+
+.q-fb-explain {
+  font-size: calc(var(--base-font) - 2px);
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+/* 讲师一对一辅导会话面板（复用弹题框内部） */
+.lecture-session {
+  margin-top: 16px;
+  border-top: 1px dashed var(--line);
+  padding-top: 14px;
+}
+
+/* 聊天记录：在底部面板内自适应伸缩，溢出内部滚动 */
+.lecture-chat {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 2px 8px;
+}
+
+/* 聊天气泡通用底座 */
+.lecture-chat [class^="lec-"] {
+  max-width: 82%;
+  padding: 11px 15px;
+  font-size: calc(var(--base-font));
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+/* 讲师气泡：浅色卡 + 左边窄条，表达“解说正文”，右侧圆角收尾 */
+.lecture-chat .lec-tutor {
+  align-self: flex-start;
+  background: #fdfcfa;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 4px 14px 14px 14px;
+  color: var(--ink);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* 用户气泡：主色实心，右下圆角收尾，与讲师区分清晰 */
+.lecture-chat .lec-user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 14px 4px 14px 14px;
+  box-shadow: 0 3px 10px rgba(124, 107, 213, 0.28);
+}
+
+.lecture-chat .lec-empty {
+  align-self: center;
+  color: var(--ink-soft);
+  font-size: 13px;
+  text-align: center;
+  padding: 14px 10px;
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+
+.lecture-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.lecture-input-row .q-input {
+  flex: 1;
+  min-height: 0;
+}
+
+.lecture-toolbar {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* 讲师模式：复用底部对话栏 #dialog-box 变身辅导栏（不再用独立的弹题框面板），
+   与「讲述者/提问者」共用同一条对话栏。切换时隐藏台词文本、显示会话区。 */
+#dialog-box.lecture-mode .dialog-text {
+  display: none;
+}
+#dialog-box.lecture-mode #dialog-name {
+  display: none;
+}
+#dialog-box.lecture-mode .lecture-session {
+  display: flex;
+}
+
+/* ────────── 讲师一对一辅导栏（复用底部对话栏 #dialog-box）──────────
+   与「讲述者/提问者」共用同一条底部对话栏：进入讲师模式时，#dialog-box
+   切换成纵向布局，隐藏台词文本，显示会话区(名字徽标/聊天记录/输入行/工具栏)。
+   沿用底部对话框本身的米色渐变圆角框，保证三者视觉完全一致。 */
+#dialog-box.lecture-mode {
+  height: auto;                    /* 撑高以容纳多轮记录 + 输入行 */
+  min-height: 240px;
+  max-height: calc(100vh - var(--dialog-height) - 40px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;                /* 溢出交给内部 .lecture-chat 滚动 */
+  animation: lectureSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 讲师模式专属上滑动画（复用底部对话栏，仅淡入上滑） */
+@keyframes lectureSlideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.lecture-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+
+.lecture-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 999px;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 8px rgba(124, 107, 213, 0.35);
+}
+
+.lecture-header .btn-ghost {
+  color: var(--ink-soft);
+}
+
+.lecture-header .btn-ghost:hover {
+  color: var(--bad);
+}
+
+/* 会话区在对话栏内自适应填充，去掉原本的分隔虚线（徽标已贴顶） */
+#dialog-box.lecture-mode .lecture-session {
+  margin-top: 0;
+  border-top: none;
+  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ────────── 填空/简答输入区（需求1：重做 UI，输入框加大）────────── */
+.q-input-area {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.q-input {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  padding: 14px 16px;
+  font-family: inherit;
+  font-size: calc(var(--base-font) + 3px);
+  line-height: 1.8;
+  color: var(--ink);
+  background: #fff;
+  border: 2px solid #d8d3e4;
+  border-radius: 12px;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.q-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(124, 107, 213, 0.18);
+}
+
+.q-input::placeholder {
+  color: #a7a2b8;
+}
+
+.q-submit {
+  align-self: flex-end;
+  padding: 10px 22px;
+  font-size: calc(var(--base-font) + 1px);
+}
+
+/* 答错提示与正确答案（答错满 3 次亮出） */
+.q-answer-reveal {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: rgba(124, 107, 213, 0.08);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  font-size: calc(var(--base-font) + 1px);
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+/* ────────── 主菜单「读取存档」弹窗（需求2：每档标注资料名）────────── */
+.archive-list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 18px;
+}
+
+.archive-item {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #f7f5fc;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.archive-item:hover {
+  border-color: var(--accent);
+  background: #efeefd;
+}
+
+.archive-doc {
+  flex: 1;
+  min-width: 0;
+  font-size: calc(var(--base-font) + 1px);
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.archive-meta {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+.archive-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: calc(var(--base-font));
+}
+
+/* ────────── 学习报告面板（需求：嵌入 ECharts）────────── */
+.report-fab {
+  position: absolute;
+  right: 14px;
+  top: 14px;                       /* 播放器右上角 */
+  z-index: 9;
+  cursor: pointer;
+  border: 1px solid rgba(244, 241, 234, 0.35);
+  background: rgba(20, 20, 30, 0.82);
+  color: #f4f1ea;
+  font-size: 14px;
+  letter-spacing: 1px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.report-fab:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.report-card {
+  width: min(760px, 92vw);          /* 比普通弹窗更宽，容纳两张图 */
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.report-desc {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+
+/* 顶部统计条：总作答 / 答对 / 总体正确率 */
+.report-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.stat-tile {
+  flex: 1;
+  text-align: center;
+  padding: 14px 8px;
+  background: #f7f5fc;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.stat-num {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+
+/* 图表区 */
+.report-chart-wrap {
+  margin-bottom: 20px;
+}
+
+.report-chart-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.report-echart {
+  width: 100%;
+  height: 300px;                    /* 雷达/柱状固定高度，适配 ECharts 初始化 */
+}
+
+.report-empty {
+  padding: 30px 0;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* 需求3：弹题类型设置样式 */
+.quiz-opts {
+  margin-top: 18px;
+  padding: 14px;
+  background: rgba(246, 240, 243, 0.7);
+  border: 1px solid #e2d3dc;
+  border-radius: 10px;
+}
+
+.quiz-check {
+  display: block;
+  margin: 8px 0;
+  font-size: 15px;               /* 弹题类型字号固定，不受全局字体设置影响 */
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.quiz-check input {
+  margin-right: 8px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+/* 需求2：字体大小设置样式 */
+.font-box {
+  margin-top: 18px;
+  padding: 14px;
+  background: rgba(246, 240, 243, 0.7);
+  border: 1px solid #e2d3dc;
+  border-radius: 10px;
+}
+
+.font-box input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.font-preview {
+  margin-top: 10px;
+  padding: 12px;
+  background: #fff;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: calc(var(--base-font) + 2px);
+}
+
+#font-size-val {
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
+/* 需求1：生成完成提示框 */
+.modal-desc {
+  font-size: calc(var(--base-font) + 1px);
+  color: var(--ink);
+  line-height: 1.7;
+  margin: 12px 0 20px;
+  white-space: pre-line;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+#q-continue {
+  margin-top: 16px;
+}
+
+/* ────────── 存档弹窗 ────────── */
+.modal {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 8, 14, 0.7);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-card {
+  width: min(680px, 90vw);
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.slot-cell {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 82px;
+  background: #fbf9f4;
+  transition: border-color 0.15s;
+}
+
+.slot-cell:hover {
+  border-color: var(--accent);
+}
+
+.slot-name {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.slot-info {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+
+.slot-time {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.slot-empty {
+  color: var(--ink-soft);
+}
+
+/* ────────── 需求1：弹题「直接查看答案」按钮 ────────── */
+.q-toolbar {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-ghost {
+  cursor: pointer;
+  background: none;
+  border: 1px dashed var(--line);
+  color: var(--ink-soft);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: calc(var(--base-font) - 2px);
+  transition: all 0.15s;
+}
+
+.btn-ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  background: rgba(124, 107, 213, 0.08);
+}
+
+/* ────────── 需求2：读取存档「删除」按钮 ────────── */
+.archive-del {
+  cursor: pointer;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #e0c3c3;
+  background: #faf2f2;
+  color: #b54444;
+  font-size: 13px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.archive-del:hover {
+  background: #c62828;
+  border-color: #c62828;
+  color: #fff;
+}
+
+/* ────────── 轻提示 Toast ────────── */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 120px;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 30, 0.92);
+  color: #fff;
+  font-size: 14px;
+  padding: 12px 26px;
+  border-radius: 999px;
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+  white-space: nowrap;
+  max-width: 90vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════
+ * 登录功能 —— 全屏遮罩（毛玻璃 + 柔和渐变，贴合视觉小说风格）
+ *
+ * 结构（见 index.html）：#login-overlay 覆盖全页，
+ *   #login-card 居中卡片（半透明毛玻璃）；
+ *   登录成功后 #login-overlay 加 .logged-in 淡出，随后转为 .hidden 移除；
+ *   左上角 #user-avatar 为圆形小头像。
+ * ═══════════════════════════════════════════════ */
+
+/* —— 全屏遮罩：登录背景图 + 毛玻璃 + 柔和渐层，z-index 最高盖住整页 —— */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;                      /* 高于播放器/弹窗/Toast，启动即盖全页 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: url("../images/前端背景/登录背景.png");   /* 登录专属背景图 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: opacity 0.35s ease;
+}
+
+/* 毛玻璃背景层：在遮罩上用绝对定位伪元素实现 blur，不影响卡片 */
+.login-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(6px) saturate(1.05);
+  -webkit-backdrop-filter: blur(6px) saturate(1.05);
+}
+
+/* 登录成功后：透明度归零淡出（login.js 延时后补 .hidden 完全隐藏） */
+.login-overlay.logged-in {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* —— 居中登录卡片：半透明毛玻璃面板 —— */
+.login-card {
+  position: relative;
+  z-index: 1;
+  width: min(380px, 86vw);
+  padding: 34px 32px 28px;
+  border-radius: 18px;
+  background: rgba(244, 241, 234, 0.10);
+  border: 1px solid rgba(244, 241, 234, 0.22);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  text-align: center;
+  color: #0a0a12;   /* 黑字：背景已换为图片，改用深色文字保证可读 */
+}
+
+/* —— 卡片顶部圆头像（呼应右上角头像） —— */
+.login-logo img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid rgba(244, 241, 234, 0.35);
+  object-fit: cover;
+  margin-bottom: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.login-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  margin-bottom: 4px;
+  color: #0a0a12;   /* 黑字 */
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.4);
+}
+
+.login-subtitle {
+  font-size: 13px;
+  color: #0a0a12;   /* 黑字 */
+  letter-spacing: 2px;
+  margin-bottom: 26px;
+}
+
+/* —— 输入框 —— */
+.login-field {
+  display: block;
+  text-align: left;
+  margin-bottom: 16px;
+}
+
+.login-label {
+  display: block;
+  font-size: 13px;
+  color: #0a0a12;   /* 黑字 */
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(10, 10, 18, 0.35);
+  background: rgba(255, 255, 255, 0.55);
+  color: #0a0a12;   /* 黑字 */
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.login-input::placeholder {
+  color: rgba(10, 10, 18, 0.5);
+}
+
+.login-input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.10);
+}
+
+/* —— 登录按钮 —— */
+.login-btn {
+  width: 100%;
+  cursor: pointer;
+  padding: 13px 0;
+  margin-top: 6px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  color: #fff;
+  font-size: 16px;
+  letter-spacing: 6px;
+  font-weight: 700;
+  transition: filter 0.2s, transform 0.1s;
+}
+
+.login-btn:hover {
+  filter: brightness(1.08);
+}
+
+.login-btn:active {
+  transform: translateY(1px);
+}
+
+.login-hint {
+  margin-top: 14px;
+  font-size: 12px;
+  color: rgba(10, 10, 18, 0.55);   /* 黑字提示 */
+}
+
+/* —— 左上角登录头像：圆形小尺寸，不抢占主界面空间 —— */
+.user-avatar {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  z-index: 60;                          /* 常驻于弹窗之上、Toast 之下 */
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(244, 241, 234, 0.4);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  background: rgba(244, 241, 234, 0.08);
+  pointer-events: none;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;                  /* 裁剪填满圆形，不失真 */
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════
+ * 历史记录面板（需求：对话历史 + 测验历史，选项卡切换）
+ * 结构见 index.html #history-modal：
+ *   .htab-bar → 选项卡按钮 .htab-btn[data-tab]（active 高亮）
+ *   #history-dialogue / #history-quiz 两条列表，由 history.js 渲染
+ * ═══════════════════════════════════════════════ */
+
+/* —— 选项卡行 —— */
+.htab-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.htab-btn {
+  flex: 1;
+  cursor: pointer;
+  padding: 10px 0;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fbf9f4;
+  color: var(--ink-soft);
+  font-size: 14px;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+}
+
+.htab-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.htab-btn:hover:not(.active) {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+/* —— 列表容器（两条共用）—— */
+.hist-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* —— 空提示 —— */
+.hist-empty {
+  padding: 36px 0;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+/* —— 对话历史条目：头像 + 名字 + 内容 —— */
+.hist-dialogue-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.hist-dialogue-item:last-child {
+  border-bottom: none;
+}
+
+.hist-avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: #fbf9f4;
+}
+
+.hist-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.hist-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  margin-bottom: 4px;
+}
+
+.hist-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+  word-wrap: break-word;
+}
+
+/* —— 测验历史条目：题目 + 用户答 / 正确答案 + 对错 + 解析 —— */
+.hist-quiz-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.hist-quiz-item:last-child {
+  border-bottom: none;
+}
+
+.hist-q-question {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.hist-q-row {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.hist-q-label {
+  flex-shrink: 0;
+  color: var(--ink-soft);
+}
+
+.hist-q-val {
+  color: var(--ink);
+  word-wrap: break-word;
+}
+
+.hist-q-status {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 6px 0;
+}
+
+.hist-quiz-item.quiz-ok .hist-q-status {
+  color: var(--good);
+}
+
+.hist-quiz-item.quiz-bad .hist-q-status {
+  color: var(--bad);
+}
+
+.hist-q-explain {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  background: #fbf9f4;
+  border-radius: 6px;
+  padding: 8px 10px;
+}

@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+pydantic-settings
+python-multipart
+python-docx
+pypdf
+requests
+
+# AI 编排（LangChain 直接调 DeepSeek）
+langchain-core
+langchain-deepseek
+
+# 选择数据库：默认 SQLite（答辩演示省事）；接真实 PostgreSQL 时安装并配置 DATABASE_URL
+# psycopg2-binary  # PostgreSQL 驱动，需要时取消注释

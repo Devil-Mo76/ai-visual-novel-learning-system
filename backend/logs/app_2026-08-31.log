@@ -1,0 +1,8 @@
+2026-08-31 10:19:24.411 | INFO    | backend.main:_startup:51 | 服务已启动：数据库 sqlite:///E:\大学\本科毕业论文\frontend\backend\learning.db
+2026-08-31 10:19:42.114 | INFO    | logging:callHandlers:1737 | 讲师会话已清空 script_id=2
+2026-08-31 10:24:48.149 | INFO    | backend.main:_startup:51 | 服务已启动：数据库 sqlite:///E:\大学\本科毕业论文\frontend\backend\learning.db
+2026-08-31 10:24:56.810 | INFO    | logging:callHandlers:1737 | 学习报告 script_id=1 总题=0 答对=0
+2026-08-31 10:24:56.855 | INFO    | logging:callHandlers:1737 | 学习报告 script_id=2 总题=0 答对=0
+2026-08-31 10:38:57.920 | INFO    | logging:callHandlers:1737 | 学习报告 script_id=1 总题=0 答对=0
+2026-08-31 10:39:36.822 | INFO    | logging:callHandlers:1737 | 学习报告 script_id=1 总题=14 答对=7
+2026-08-31 10:39:59.748 | INFO    | logging:callHandlers:1737 | 学习报告 script_id=1 总题=14 答对=7

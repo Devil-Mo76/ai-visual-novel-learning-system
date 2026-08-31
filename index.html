@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI视觉小说互动式学习系统</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <!-- ECharts（本地化，离线可用）：学习报告面板的雷达图/柱状图依赖它 -->
+  <script src="vendor/echarts.min.js"></script>
+</head>
+<body>
+  <!-- ═══════════ 登录遮罩（模拟登录，启动时全屏覆盖） ═══════════ -->
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-card">
+      <div class="login-logo">
+        <img src="images/用户头像/用户头像.png" alt="登录头像" />
+      </div>
+      <h1 class="login-title">AI 视觉小说学习</h1>
+      <p class="login-subtitle">讲述者 · 提问者 双人互动教学</p>
+
+      <label class="login-field">
+        <span class="login-label">用户名</span>
+        <input id="login-username" class="login-input" type="text" placeholder="请输入用户名" autocomplete="username" />
+      </label>
+      <label class="login-field">
+        <span class="login-label">密码</span>
+        <input id="login-password" class="login-input" type="password" placeholder="请输入密码" autocomplete="current-password" />
+      </label>
+
+      <button id="btn-login" class="login-btn">进入系统</button>
+      <p class="login-hint">模拟登录：任意用户名/密码均可进入</p>
+    </div>
+  </div>
+
+  <!-- ═══════════ 左上角登录用户头像 ═══════════ -->
+  <div id="user-avatar" class="user-avatar hidden" title="当前登录用户">
+    <img src="images/用户头像/用户头像.png" alt="用户头像" />
+  </div>
+
+  <!-- ═══════════ 主菜单屏 ═══════════ -->
+  <section id="screen-menu" class="screen active">
+    <div class="menu-backdrop"></div>
+    <div class="menu-container">
+      <h1 class="menu-title">AI视觉小说互动式学习系统</h1>
+      <div class="menu-subtitle">讲述者 · 提问者 双人互动教学</div>
+      <nav class="menu-nav">
+        <button class="menu-btn" data-nav="library">开始学习</button>
+        <button class="menu-btn" id="btn-menu-continue">继续学习</button>
+        <button class="menu-btn" id="btn-menu-load">读取存档</button>
+        <button class="menu-btn" data-nav="settings">设置</button>
+        <button class="menu-btn" id="btn-menu-exit">退出</button>
+      </nav>
+      <div class="menu-status" id="menu-status"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 开始学习 / 资料库 屏 ═══════════ -->
+  <section id="screen-library" class="screen">
+    <div class="screen-header">
+      <h2>开始学习</h2>
+      <button class="btn-back" data-nav="menu">返回主菜单</button>
+    </div>
+    <div class="library-body">
+      <!-- 上传区：拖拽/选择 + 上传 -->
+      <div class="upload-card" id="upload-card">
+        <div class="upload-title">导入学习资料</div>
+        <p class="upload-hint">支持 Word（.docx）与 PDF（.pdf），上限 20MB · 解析后自动生成教学剧本</p>
+        <div id="drop-area" class="drop-area">
+          <div class="drop-icon">📄</div>
+          <div class="drop-text">点击选择文件，或将文件拖到这里</div>
+          <input type="file" id="file-input" accept=".docx,.pdf" hidden />
+        </div>
+        <button class="btn-primary" id="btn-upload">上传并解析</button>
+        <div id="upload-status"></div>
+      </div>
+
+      <!-- 资料列表 + 生成区 -->
+      <div class="library-card">
+        <div class="library-title">现有学习资料</div>
+        <div class="library-subtitle">点击选中资料 → 设置章节数 → 生成剧本</div>
+        <ul id="doc-list" class="doc-list"></ul>
+        <div class="goal-box">
+          <label class="gen-label" for="learning-goal">学习背景说明</label>
+          <textarea id="learning-goal" class="goal-textarea" rows="3"
+            placeholder="可选：告诉 AI 这份文档的用途，让讲解更贴合你的场景。例如：我是一名大四学生，正在准备考研，这份文档是我的考研专业课资料。"></textarea>
+          <span class="goal-hint">此说明仅作为上下文增强讲解针对性，不会改变剧本生成规则。</span>
+        </div>
+        <div class="doc-generate-bar">
+          <label class="gen-label" for="chapter-count">章节数</label>
+          <select id="chapter-count" class="gen-select">
+            <option value="5">5 章</option>
+            <option value="8">8 章</option>
+            <option value="10">10 章</option>
+            <option value="12">12 章</option>
+            <option value="15">15 章</option>
+            <option value="20">20 章</option>
+            <option value="30">30 章</option>
+          </select>
+          <button class="btn-primary" id="btn-generate" disabled>生成教学剧本</button>
+        </div>
+        <div id="gen-status"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 设置 屏 ═══════════ -->
+  <section id="screen-settings" class="screen">
+    <div class="screen-header">
+      <h2>设置</h2>
+      <button class="btn-back" data-nav="menu">返回</button>
+    </div>
+    <!-- 自适应网格：连接/显示/弹题三组，宽屏并排、窄屏堆叠 -->
+    <div class="settings-layout">
+
+      <!-- 连接设置（占满整行） -->
+      <div class="settings-group group-conn">
+        <div class="group-title">🔌 连接设置</div>
+
+        <label class="field-label" for="set-api-base">API 地址</label>
+        <input class="field-input" id="set-api-base" placeholder="https://api.siliconflow.cn/v1" />
+        <span class="field-hint">硅基流动中转站（OpenAI 兼容协议），默认即可</span>
+
+        <label class="field-label" for="set-api-key">API Key</label>
+        <input class="field-input" id="set-api-key" type="password" placeholder="sk-…" autocomplete="off" />
+        <span class="field-hint" id="key-hint">密钥仅保存在后端数据库，不会回传到浏览器。</span>
+
+        <label class="field-label" for="set-model">模型名称</label>
+        <input class="field-input" id="set-model" placeholder="deepseek-ai/DeepSeek-V3" />
+
+        <div class="settings-actions">
+          <button class="btn-primary" id="btn-test">API 连接测试</button>
+          <button class="btn-primary" id="btn-save-settings">保存设置</button>
+          <span id="settings-status"></span>
+        </div>
+      </div>
+
+      <!-- 显示设置 -->
+      <div class="settings-group group-display">
+        <div class="group-title">🖥 显示设置</div>
+        <div class="font-box">
+          <label class="field-label" for="font-size">全局字体大小 <span id="font-size-val">16px</span></label>
+          <input type="range" id="font-size" min="12" max="28" step="1" value="16" />
+          <div class="font-preview" id="font-preview">
+            预览：这是一段字体大小预览文字，当前字号将实时反馈。
+          </div>
+          <div class="settings-actions">
+            <button class="btn-primary" id="btn-font-apply">应用</button>
+            <button class="btn-primary" id="btn-font-default">默认</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 弹题类型 -->
+      <div class="settings-group group-quiz">
+        <div class="group-title">🧩 弹题类型</div>
+        <div class="quiz-opts">
+          <label class="field-label">弹题类型（下次生成剧本时生效）</label>
+          <label class="quiz-check"><input type="checkbox" id="qtype-choice" checked /> 选择题</label>
+          <label class="quiz-check"><input type="checkbox" id="qtype-fill" /> 填空题</label>
+          <label class="quiz-check"><input type="checkbox" id="qtype-short" /> 简答题（复述 70%-80% 视为通过）</label>
+          <span class="field-hint">勾选后，下次生成剧本时会按所选类型自动加入对应题目。</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 播放器 屏 ═══════════ -->
+  <section id="screen-player" class="screen">
+    <div id="bg-layer" class="bg-layer"></div>
+
+    <!-- 角色立绘（同一位置单人轮播：需求5 每次只显示一个人）-->
+    <div class="sprite sprite-teacher" id="sprite-teacher"></div>
+    <div class="sprite sprite-student" id="sprite-student"></div>
+    <!-- 讲师立绘（需求：用户召唤的专属讲师，一对一辅导时占屏）-->
+    <div class="sprite sprite-lecturer sprite-off" id="sprite-lecturer"></div>
+
+    <!-- 章节标题条 -->
+    <div class="chapter-bar" id="chapter-bar"></div>
+
+    <!-- 对话栏 -->
+    <div class="dialog-box" id="dialog-box">
+      <div class="dialog-name" id="dialog-name">讲述者</div>
+      <div class="dialog-text" id="dialog-text"></div>
+
+      <!-- 讲师一对一辅导会话区：复用底部对话栏（进入讲师模式时显示，
+           与讲述者/提问者共用同一条对话栏，多轮记录 + 输入框） -->
+      <div class="lecture-session hidden" id="lecture-session">
+        <div class="lecture-header">
+          <span class="lecture-title">📖 讲师一对一辅导</span>
+          <button class="btn-ghost" id="btn-lecture-close-top" title="结束一对一辅导，返回双人学习">✕ 关闭</button>
+        </div>
+        <div class="lecture-chat" id="lecture-chat"></div>
+        <div class="lecture-input-row">
+          <textarea id="lecture-input" class="q-input" rows="2" placeholder="输入你想深入了解的地方，讲师会一对一为你讲解…"></textarea>
+          <button class="btn-primary" id="btn-lecture-send">提问</button>
+        </div>
+        <div class="lecture-toolbar">
+          <button class="btn-back" id="btn-lecture-close">返回学习</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部功能栏 -->
+    <div class="control-bar">
+      <button class="ctl-btn" id="btn-save">保存</button>
+      <button class="ctl-btn" id="btn-load">读取</button>
+      <button class="ctl-btn" id="btn-return-menu">返回主菜单</button>
+      <span class="ctl-sep"></span>
+      <button class="ctl-btn" id="btn-history" title="查看对话历史与测验历史">历史记录</button>
+      <button class="ctl-btn" id="btn-settings-player">设置</button>
+      <button class="ctl-btn ctl-placeholder" id="btn-fastskip" title="开发中">快进</button>
+      <button class="ctl-btn" id="btn-only-wrong" title="只看错题：仅播放你之前答错的题目所在章节，针对性复习">只看错题</button>
+      <button class="ctl-btn" id="btn-auto">自动</button>
+      <button class="ctl-btn" id="btn-hide-dialog">隐藏对话栏</button>
+    </div>
+    <!-- 底部操作小字提示（需求四：快捷键引导） -->
+    <div class="control-hint">空格键 / 鼠标左键 → 推进对话</div>
+
+    <!-- 学习报告入口：播放器右上角悬浮按钮（需求：学习报告面板，嵌入 ECharts） -->
+    <button class="report-fab" id="btn-report-fab" title="查看本剧本的学习报告（雷达图 + 各章正确率柱状图）">📊 学习报告</button>
+
+    <!-- 讲师入口：主界面右侧悬浮按钮（需求：用户单击召唤讲师一对一辅导） -->
+    <button class="lecture-fab" id="btn-lecture-fab" title="召唤讲师一对一深入讲解当前知识点">📖 讲师</button>
+
+    <!-- 弹题框 -->
+    <div class="question-box hidden" id="question-box">
+      <div class="q-title">检测学习成果</div>
+      <div class="q-asker" id="q-asker"></div>
+      <div class="q-text" id="q-text"></div>
+      <div class="q-choices" id="q-choices"></div>
+      <div class="q-input-area hidden" id="q-input-area">
+        <textarea id="q-input" class="q-input" rows="3" placeholder="请输入你的作答…"></textarea>
+        <button class="btn-primary" id="q-submit">提交作答</button>
+      </div>
+      <div class="q-toolbar">
+        <button class="btn-ghost hidden" id="q-peek-answer" title="AI 判题卡死时可直接看答案，不影响继续学习">👁 直接查看答案</button>
+        <button class="btn-ghost hidden" id="q-deep-dive" title="对这题的疑难部分进行深入学习，召唤讲师一对一讲解">🔍 深入学习</button>
+      </div>
+      <div class="q-feedback hidden" id="q-feedback"></div>
+      <button class="btn-primary hidden" id="q-continue">继续学习 →</button>
+    </div>
+
+    <!-- 存档列表 -->
+    <div class="modal hidden" id="modal-slots">
+      <div class="modal-card">
+        <div class="modal-title" id="modal-slots-title">选择存档 / 读档</div>
+        <div class="slot-grid" id="slot-grid"></div>
+        <button class="btn-primary" id="modal-slots-close">关闭</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 全局轻提示 -->
+  <div id="toast" class="toast"></div>
+
+  <!-- 生成完成提示框（需求1：进入学习 / 下次再学） -->
+  <div class="modal hidden" id="modal-done">
+    <div class="modal-card">
+      <div class="modal-title" id="modal-done-title">剧本生成完成</div>
+      <div class="modal-desc" id="modal-done-desc">教学剧本已根据你的学习资料生成完毕。</div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="btn-done-enter">▶ 进入学习</button>
+        <button class="btn-back" id="btn-done-later">下次再学</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主菜单：读取存档列表弹窗（每档标注学习资料名） -->
+  <div class="modal hidden" id="modal-archive">
+    <div class="modal-card">
+      <div class="modal-title">读取存档</div>
+      <div class="modal-desc">选择一份存档继续学习，每个存档标注了对应的学习资料。</div>
+      <div class="archive-list" id="archive-list"></div>
+      <button class="btn-primary" id="btn-archive-close">关闭</button>
+    </div>
+  </div>
+
+  <!-- 历史记录面板（对话历史 + 测验历史，选项卡切换） -->
+  <div class="modal hidden" id="history-modal">
+    <div class="modal-card history-card">
+      <div class="modal-title">历史记录</div>
+
+      <!-- 选项卡 -->
+      <div class="htab-bar">
+        <button class="htab-btn active" data-tab="dialogue">💬 对话历史</button>
+        <button class="htab-btn" data-tab="quiz">📝 测验历史</button>
+      </div>
+
+      <!-- 对话历史列表 -->
+      <div class="hist-list" id="history-dialogue"></div>
+
+      <!-- 测验历史列表 -->
+      <div class="hist-list hidden" id="history-quiz"></div>
+
+      <button class="btn-primary" id="btn-history-close">关闭</button>
+    </div>
+  </div>
+
+  <!-- 学习报告面板（嵌入 ECharts）：雷达图 + 各章正确率柱状图 -->
+  <div class="modal hidden" id="report-modal">
+    <div class="modal-card report-card">
+      <div class="modal-title">📊 学习报告</div>
+      <div class="report-desc" id="report-desc">加载中…</div>
+
+      <!-- 顶部统计：总题数 / 答对数 / 总体正确率 -->
+      <div class="report-stats" id="report-stats">
+        <div class="stat-tile"><div class="stat-num" id="stat-total">0</div><div class="stat-label">总作答</div></div>
+        <div class="stat-tile"><div class="stat-num" id="stat-correct">0</div><div class="stat-label">答对</div></div>
+        <div class="stat-tile"><div class="stat-num" id="stat-rate">0%</div><div class="stat-label">总体正确率</div></div>
+      </div>
+
+      <!-- 雷达图 -->
+      <div class="report-chart-wrap">
+        <div class="report-chart-title">🔁 知识点维度掌握度（按章节标题）</div>
+        <div id="report-radar" class="report-echart"></div>
+      </div>
+
+      <!-- 柱状图 -->
+      <div class="report-chart-wrap">
+        <div class="report-chart-title">📈 各章节答题正确率（正确数 / 总尝试数）</div>
+        <div id="report-bar" class="report-echart"></div>
+      </div>
+
+      <div class="report-empty hidden" id="report-empty">暂未检测到答题记录。先去学习并作答，学习报告会在这里汇总你的掌握情况。</div>
+
+      <button class="btn-primary" id="btn-report-close">关闭</button>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/modes.js"></script>
+  <script src="js/typing.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/streaming.js"></script>
+  <script src="js/lecture.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/login.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
