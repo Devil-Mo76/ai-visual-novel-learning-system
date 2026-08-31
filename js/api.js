@@ -134,6 +134,11 @@ const Api = {
     return this._req("/api/lecture/end", this._json("POST", { script_id: scriptId }));
   },
 
+  // —— 讲师历史记录（只读展示过往问答）——
+  lectureHistory(scriptId) {
+    return this._req(`/api/lecture/history?script_id=${scriptId}`);
+  },
+
   // 通用 SSE 读取器：POST JSON → 逐「data: 」行解析 → 回调 onEvent(对象) → [DONE] resolve。
   async _sse(path, body, onEvent) {
     const resp = await fetch(this.base + path, this._json("POST", body));

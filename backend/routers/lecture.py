@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import Script, Settings
-from ..schemas import LectureChatIn, LectureEndIn
+from ..schemas import LectureChatIn, LectureEndIn, LectureHistoryRecordOut
 from ..services import lecture_service
 
 logger = logging.getLogger("lecture")
@@ -65,6 +65,25 @@ def lecture_chat(payload: LectureChatIn, db: Session = Depends(get_db)):
             yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@router.get("/history", response_model=list[LectureHistoryRecordOut])
+def lecture_history_query(script_id: int, db: Session = Depends(get_db)):
+    """取某剧本的讲师历史对话（只读），展示为聊天气泡。
+
+    数据源：lecture_service 按 script_id 维护的会话历史（user/assistant 交替）。
+    无纪录时返回空列表，前端折叠框显示「暂无历史对话」。
+    """
+    rows = lecture_service.lecture_history(script_id)
+    return [
+        LectureHistoryRecordOut(
+            id=i,
+            role=str(rec.get("role", "assistant")),
+            content=str(rec.get("content", "")) or "",
+            created_at="",
+        )
+        for i, rec in enumerate(rows)
+    ]
 
 
 @router.post("/end")

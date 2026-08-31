@@ -51,6 +51,10 @@
       db.classList.remove("dialog-hidden");
       db.classList.add("lecture-mode");
 
+      // 3.5 收起历史记录折叠框（每次进入复位，避免残留展开态）
+      const histWrap = $("lecture-history");
+      if (histWrap) histWrap.classList.add("hidden");
+
       // 4. 切到讲师立绘（单人占屏），隐藏双人
       Render.showLecturer("kaixin");  // 讲师进场：欢迎表情
 
@@ -121,6 +125,42 @@
       }
     },
 
+    /* —— 展开/收起「历史记录」折叠框：调接口拉过往问答并以只读气泡展示 —— */
+    async toggleHistory() {
+      const wrap = $("lecture-history");
+      if (!wrap) return;
+      if (!wrap.classList.contains("hidden")) {
+        wrap.classList.add("hidden");
+        return;
+      }
+      if (!Modes.scriptId) {
+        Render.toast("尚未进入学习，没有讲师问答记录。");
+        return;
+      }
+      const bubbles = $("lecture-history-bubbles");
+      if (!bubbles.children.length) {
+        bubbles.innerHTML = '<div class="lec-empty">加载中…</div>';
+      }
+      try {
+        const records = await Api.lectureHistory(Modes.scriptId);
+        bubbles.innerHTML = "";
+        if (!records || !records.length) {
+          bubbles.innerHTML = '<div class="lec-empty">📭 暂无历史对话，先去向讲师提问吧。</div>';
+        } else {
+          records.forEach((r) => {
+            const bubble = document.createElement("div");
+            bubble.className = r.role === "user" ? "lec-user" : "lec-tutor";
+            // 只读展示：用 textContent 防注入，逐行保留换行
+            bubble.textContent = r.content || "";
+            bubbles.appendChild(bubble);
+          });
+        }
+      } catch (err) {
+        bubbles.innerHTML = `<div class="lec-empty">加载历史失败：${err.message}</div>`;
+      }
+      wrap.classList.remove("hidden");
+    },
+
     /* —— 退出讲师模式，返回双人学习 —— */
     async end() {
       if (!this.active) return;
@@ -139,6 +179,9 @@
       db.classList.remove("lecture-mode");
       db.classList.remove("dialog-hidden");
       $("lecture-session").classList.add("hidden");
+      // 收起状态复位：退出时一并隐藏历史折叠框，避免残留展开态
+      const histWrap = $("lecture-history");
+      if (histWrap) histWrap.classList.add("hidden");
       Render.hideLecturer();   // hideLecturer 现在会恢复双人立绘
 
       // 回到弹题框：重新展示弹题（原题上下文）
@@ -201,6 +244,9 @@
         }
         Lecture.enter("question", ctxParts.join("\n"));
       });
+
+      // 「历史记录」折叠按钮：展开/收起过往讲师问答（只读气泡）
+      $("btn-lecture-history").addEventListener("click", () => Lecture.toggleHistory());
 
       $("btn-lecture-send").addEventListener("click", () => Lecture.ask());
       $("lecture-input").addEventListener("keydown", (e) => {

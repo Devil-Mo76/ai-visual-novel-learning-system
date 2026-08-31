@@ -977,6 +977,58 @@ body {
   flex-shrink: 0;
 }
 
+/* —— 讲师「历史记录」折叠框（只读气泡）—— */
+.lecture-history {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f7f5fc;
+  padding: 12px 14px;
+  max-height: 200px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.lecture-history-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+.lecture-history-bubbles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lecture-history-bubbles [class^="lec-"] {
+  max-width: 92%;
+  padding: 8px 12px;
+  font-size: calc(var(--base-font));
+  line-height: 1.6;
+  word-break: break-word;
+}
+.lecture-history-bubbles .lec-tutor {
+  align-self: flex-start;
+  background: #fdfcfa;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 4px 12px 12px 12px;
+  color: var(--ink);
+}
+.lecture-history-bubbles .lec-user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 12px 4px 12px 12px;
+}
+.lecture-history-bubbles .lec-empty {
+  align-self: center;
+  color: var(--ink-soft);
+  font-size: 13px;
+  text-align: center;
+  padding: 8px 6px;
+}
+
 /* 讲师模式：复用底部对话栏 #dialog-box 变身辅导栏（不再用独立的弹题框面板），
    与「讲述者/提问者」共用同一条对话栏。切换时隐藏台词文本、显示会话区。 */
 #dialog-box.lecture-mode .dialog-text {
