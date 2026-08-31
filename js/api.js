@@ -69,6 +69,14 @@ const Api = {
     return this._req(`/api/scripts/${scriptId}`);
   },
 
+  // —— 编辑剧本：覆盖 chapters（标题/背景/台词/题目均可在其中修改）——
+  updateScript(scriptId, chapters) {
+    return this._req(
+      `/api/scripts/${scriptId}/update`,
+      this._json("POST", { chapters }),
+    );
+  },
+
   // —— 学习报告（analytics 聚合）——
   analyticsOverview(scriptId) {
     return this._req(`/api/analytics/overview?script_id=${scriptId}`);

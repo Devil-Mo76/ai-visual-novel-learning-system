@@ -213,6 +213,7 @@
       <button class="ctl-btn" id="btn-return-menu">返回主菜单</button>
       <span class="ctl-sep"></span>
       <button class="ctl-btn" id="btn-history" title="查看对话历史与测验历史">历史记录</button>
+      <button class="ctl-btn" id="btn-edit-script" title="编辑当前剧本内容（标题/背景/台词/题目选项与答案）">✏ 编辑剧本</button>
       <button class="ctl-btn" id="btn-settings-player">设置</button>
       <button class="ctl-btn ctl-placeholder" id="btn-fastskip" title="开发中">快进</button>
       <button class="ctl-btn" id="btn-only-wrong" title="只看错题：仅播放你之前答错的题目所在章节，针对性复习">只看错题</button>
@@ -330,6 +331,21 @@
       <div class="report-empty hidden" id="report-empty">暂未检测到答题记录。先去学习并作答，学习报告会在这里汇总你的掌握情况。</div>
 
       <button class="btn-primary" id="btn-report-close">关闭</button>
+    </div>
+  </div>
+
+  <!-- 编辑剧本弹窗：文本域展示+修改完整 JSON，保存走 /api/scripts/{id}/update -->
+  <div class="modal hidden" id="modal-edit-script">
+    <div class="modal-card edit-card">
+      <div class="modal-title">✏️ 编辑剧本</div>
+      <div class="edit-desc" id="edit-desc">载入中…</div>
+      <div class="edit-hint">可直接修改：章节 <code>title</code>、<code>background</code>；每步台词 <code>text</code>；题目的 <code>choices</code> / <code>answer</code> / <code>explain</code>。保存后覆盖当前剧本。</div>
+      <textarea id="edit-json" class="edit-textarea" spellcheck="false" placeholder="{ &quot;chapters&quot;: [ … ] }"></textarea>
+      <div class="edit-error hidden" id="edit-error"></div>
+      <div class="edit-actions">
+        <button class="btn-ghost" id="btn-edit-cancel">取消</button>
+        <button class="btn-primary" id="btn-edit-save">保存修改</button>
+      </div>
     </div>
   </div>
 

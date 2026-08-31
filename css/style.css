@@ -1029,6 +1029,63 @@ body {
   padding: 8px 6px;
 }
 
+/* ─── 编辑剧本弹窗 ─── */
+.edit-card {
+  width: min(900px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.edit-desc {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.edit-hint {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.edit-hint code {
+  background: #f0edf7;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: inherit;
+  color: var(--accent-dark);
+}
+.edit-textarea {
+  width: 100%;
+  min-height: 46vh;
+  resize: vertical;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfafc;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+.edit-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fdecea;
+  border: 1px solid #f2b8b3;
+  color: #b3261e;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.edit-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 /* 讲师模式：复用底部对话栏 #dialog-box 变身辅导栏（不再用独立的弹题框面板），
    与「讲述者/提问者」共用同一条对话栏。切换时隐藏台词文本、显示会话区。 */
 #dialog-box.lecture-mode .dialog-text {

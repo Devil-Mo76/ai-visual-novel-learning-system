@@ -155,7 +155,8 @@
           `</div>` +
           `<div class="doc-btns">` +
           (d.has_script
-            ? `<button class="doc-enter" data-enter="${d.id}" data-script="${d.latest_script_id}" title="直接进入学习">▶ 进入学习</button>`
+            ? `<button class="doc-enter" data-enter="${d.id}" data-script="${d.latest_script_id}" title="直接进入学习">▶ 进入学习</button>` +
+              `<button class="doc-edit" data-editscript="${d.latest_script_id}" title="编辑该剧本的标题/背景/台词/题目">✏ 编辑剧本</button>`
             : "") +
           `<button class="doc-del" data-del="${d.id}" title="删除该资料">✕</button>` +
           `</div>` +
@@ -179,6 +180,15 @@
             } catch (err) {
               Render.toast(`加载剧本失败：${err.message}`);
             }
+          });
+        }
+        // 「编辑剧本」→ 打开编辑弹窗（加载该剧本完整 JSON 供修改）
+        const editBtn = li.querySelector(".doc-edit");
+        if (editBtn) {
+          editBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const scriptId = Number(editBtn.dataset.editscript);
+            openEditScript(scriptId);
           });
         }
         // 点击删除按钮 → 删除（阻止冒泡到选中）
@@ -208,6 +218,53 @@
     if (!iso) return "";
     const d = new Date(iso);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
+  /* ────────── 编辑剧本弹窗 ────────── */
+  let editScriptId = null;   // 当前正在编辑的剧本 id（供保存用）
+
+  // 打开编辑弹窗：拉取剧本 → 以缩进 JSON 填充文本域
+  async function openEditScript(scriptId) {
+    editScriptId = scriptId;
+    $("edit-desc").textContent = "载入中…";
+    $("edit-error").classList.add("hidden");
+    $("modal-edit-script").classList.remove("hidden");
+    const ta = $("edit-json");
+    ta.value = "";
+    try {
+      const data = await Api.getScript(scriptId);
+      $("edit-desc").textContent = `《${data.title}》 · 共 ${data.chapters.length} 章`;
+      ta.value = JSON.stringify(data.chapters, null, 2);
+    } catch (err) {
+      $("edit-desc").textContent = `加载剧本失败：${err.message}`;
+      $("edit-error").textContent = `加载失败：${err.message}`;
+      $("edit-error").classList.remove("hidden");
+    }
+  }
+
+  // 保存：JSON 解析 → 校验 chapters → 调 update 接口覆盖剧本
+  async function saveEditScript() {
+    if (!editScriptId) return;
+    const errBox = $("edit-error");
+    errBox.classList.add("hidden");
+    let chapters;
+    try {
+      const parsed = JSON.parse($("edit-json").value);
+      if (!Array.isArray(parsed) || !parsed.length) throw new Error("chapters 必须是至少包含一章的数组");
+      chapters = parsed;
+    } catch (err) {
+      errBox.textContent = `JSON 格式错误：${err.message}`;
+      errBox.classList.remove("hidden");
+      return;
+    }
+    try {
+      const out = await Api.updateScript(editScriptId, chapters);
+      $("modal-edit-script").classList.add("hidden");
+      Render.toast(`剧本《${out.title}》已保存修改`);
+    } catch (err) {
+      errBox.textContent = `保存失败：${err.message}`;
+      errBox.classList.remove("hidden");
+    }
   }
 
   function bindLibrary() {
@@ -476,6 +533,20 @@
         e.target.classList.remove("active");
       }
     });
+
+    // 「编辑剧本」播放器按钮：打开当前剧本的编辑弹窗（暂停状态编辑）
+    $("btn-edit-script").addEventListener("click", () => {
+      if (!Modes.scriptId) {
+        Render.toast("尚未进入学习，请先选择资料进入播放器。");
+        return;
+      }
+      openEditScript(Modes.scriptId);
+    });
+    // 编辑弹窗：取消 / 保存
+    $("btn-edit-cancel").addEventListener("click", () => {
+      $("modal-edit-script").classList.add("hidden");
+    });
+    $("btn-edit-save").addEventListener("click", () => saveEditScript());
 
     // 隐藏/显示对话栏
     $("btn-hide-dialog").addEventListener("click", (e) => {
