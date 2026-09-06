@@ -639,17 +639,6 @@
         }
       });
 
-      $("btn-router-probe").addEventListener("click", async () => {
-        const el = $("router-status");
-        el.innerHTML = "正在探测本地加载 + 云端链路…（首次加载模型约数秒）";
-        try {
-          const data = await Api.llmProbe();
-          el.innerHTML = renderRouterStatus(data);
-        } catch (err) {
-          el.innerHTML = `<span class="r-badge bad">探测失败</span> ${err.message}`;
-        }
-      });
-
       $("btn-router-test").addEventListener("click", async () => {
         const el = $("router-test-out");
         el.innerHTML = "运行中…";
@@ -667,30 +656,6 @@
             <div class="r-sample">${escapeHtml(r.text)}</div>`;
         } catch (err) {
           el.innerHTML = `<span class="r-badge bad">自测失败</span> ${err.message}`;
-        }
-      });
-
-      $("btn-router-bench").addEventListener("click", async () => {
-        const el = $("router-bench-out");
-        el.innerHTML = "正在运行判题基准测试（本地 + 云端，可能需要数十秒）…";
-        try {
-          const r = await Api.llmBench({ engines: "local,cloud", limit: 0 });
-          const engKeys = Object.keys(r.engines || {});
-          const rows = engKeys.map((k) => {
-            const e = r.engines[k];
-            return `<tr><td>${engineTag(k)}</td><td>${e.model}</td>
-              <td>${e.accuracy}%</td><td>${e.recall_on_correct}%</td><td>${e.specificity_on_wrong}%</td>
-              <td>${e.avg_latency_ms}ms</td><td>${e.p50_latency_ms}ms</td><td>${e.p95_latency_ms}ms</td></tr>`;
-          }).join("");
-          const agree = r.agreement == null ? "—" : r.agreement + "%";
-          el.innerHTML = `
-            <div class="r-sub">${escapeHtml(r.note)} 本地与云端一致率：<b>${agree}</b></div>
-            <table class="r-table">
-              <thead><tr><th>引擎</th><th>模型</th><th>准确率</th><th>召回(对)</th><th>特异(错)</th><th>均值延迟</th><th>P50</th><th>P95</th></tr></thead>
-              <tbody>${rows}</tbody>
-            </table>`;
-        } catch (err) {
-          el.innerHTML = `<span class="r-badge bad">基准测试失败</span> ${err.message}`;
         }
       });
     }

@@ -164,6 +164,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-radius: var(--r-lg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--shadow-1);
 }
+/* 显示设置 / 弹题设置 / 模型路由：改用近纯黑背景（不透出背后前端图），仅这三组，其余不动 */
+.group-display,
+.group-quiz,
+.group-router {
+  background: rgba(11, 10, 15, 0.92);
+  border-color: var(--line);
+}
 .group-title { color: var(--ink); border-bottom: 1px solid var(--line); }
 .field-label, .gen-label { color: var(--ink); font-weight: 600; }
 .quiz-check { color: var(--ink); }
