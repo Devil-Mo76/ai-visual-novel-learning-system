@@ -63,14 +63,21 @@
     _treeChart: null,
     _timeChart: null,
     _typeChart: null,
-    _coverageChart: null,
+    _coverageChart: null,          // 已弃用（考点覆盖度移除），保留字段避免误删报错
     _diagCache: null,
     _scriptId: 0,
 
-    /* —— 打开面板：拉取数据并渲染两张图 —— */
+    /* —— 打开面板：拉取数据并渲染主视图 —— */
     async open(scriptId) {
       try { await ensureEcharts(); } catch (e) { /* echarts 缺失时下方各图自行兜底 */ }
       this._scriptId = scriptId;
+      this._diagCache = null;
+
+      // 默认显示主视图，回到顶部
+      $("report-main").classList.remove("hidden");
+      $("report-diag-page").classList.add("hidden");
+      $("report-modal").scrollTop = 0;
+
       const desc = $("report-desc");
       const stats = $("report-stats");
       const empty = $("report-empty");
@@ -78,21 +85,11 @@
       empty.classList.add("hidden");
       desc.textContent = "加载中…";
 
-      // 重置：薄弱诊断面板收起，等用户点按钮再展开
-      this._diagCache = null;
-      const diagWrap = $("report-diagnosis-wrap");
-      if (diagWrap) diagWrap.classList.add("hidden");
-      const diagBtn = $("btn-report-diagnosis");
-      const diagHint = $("report-diag-hint");
-      if (diagBtn) diagBtn.disabled = false;
-      if (diagHint) diagHint.textContent = "查看薄弱知识点、掌握度与推荐复习顺序";
-
       try {
         const data = await Api.analyticsOverview(scriptId);
         $("report-modal").classList.remove("hidden");
 
-        // 思维导图始终渲染：组织「资料 → 知识点 → 考点」的知识结构（不含角色对话），
-        // 不依赖作答记录，即使尚无答题数据也展示学习资料的知识结构。
+        // 知识点辐射图：不依赖作答记录，始终渲染学习资料的知识结构
         let scriptChapters = [];
         try {
           const script = await Api.getScript(scriptId);
@@ -102,16 +99,15 @@
         }
         this._renderTree(scriptChapters);
 
-        // 没有任何作答记录：展示空态（掌握度/正确率/趋势暂不渲染，思维导图已渲染）
+        // 没有任何作答记录：展示空态
         if (!data.chapters_accuracy || !data.chapters_accuracy.some((c) => c.total > 0)) {
-          desc.textContent = `《${data.script_title}》暂无可汇总的答题数据（上方为知识点结构思维导图）`;
+          desc.textContent = `《${data.script_title}》暂无可汇总的答题数据（下方为知识点辐射图）`;
           stats.classList.add("hidden");
           empty.classList.remove("hidden");
           this._disposeMastery(null);
           this._disposeBar(null);
           this._disposeTime(null);
           this._disposeType(null);
-          this._disposeCoverage(null);
           return;
         }
 
@@ -125,7 +121,6 @@
         this._renderBar(data.chapters_accuracy);
         this._renderTime(data.time_series || []);
         this._renderType(data.type_distribution || []);
-        this._renderCoverage(data.coverage || {});
       } catch (err) {
         $("report-modal").classList.remove("hidden");
         desc.textContent = `加载学习报告失败：${err.message}`;
@@ -136,24 +131,12 @@
       }
     },
 
-    /* —— 切换「薄弱诊断与复习建议」面板（首次点开才拉取）—— */
-    async toggleDiagnosis(scriptId) {
-      const wrap = $("report-diagnosis-wrap");
-      const btn = $("btn-report-diagnosis");
-      const hint = $("report-diag-hint");
-      if (!wrap) return;
+    /* —— 进入「薄弱诊断」全屏子页（首次点开才拉取数据）—— */
+    async openDiagnosis(scriptId) {
+      $("report-diag-desc").textContent = "正在加载学情诊断…";
+      $("report-diag-empty").classList.add("hidden");
+      $("report-diagnosis").innerHTML = "";
 
-      // 面板当前展开 → 收起
-      if (!wrap.classList.contains("hidden")) {
-        wrap.classList.add("hidden");
-        if (btn) btn.classList.remove("active");
-        if (hint) hint.textContent = "查看薄弱知识点、掌握度与推荐复习顺序";
-        return;
-      }
-
-      // 展开：首次需要拉取诊断数据
-      if (btn) btn.classList.add("active");
-      if (hint) hint.textContent = "正在加载学情诊断…";
       if (!this._diagCache) {
         let diag = null;
         try {
@@ -163,9 +146,27 @@
         }
         this._diagCache = diag;
       }
-      this._renderDiagnosis(this._diagCache);
-      wrap.classList.remove("hidden");
-      if (hint) hint.textContent = this._diagEmpty() ? "暂无足够的作答数据用于诊断，继续学习后可查看" : "";
+
+      const d = this._diagCache;
+      if (!d || !d.points || !d.points.length) {
+        $("report-diag-desc").textContent = "";
+        $("report-diag-empty").classList.remove("hidden");
+      } else {
+        $("report-diag-desc").textContent = "以下是针对本剧本的薄弱点诊断与建议复习顺序：";
+        this._renderDiagnosis(d);
+      }
+
+      // 切换到子页：仅显示诊断页
+      $("report-main").classList.add("hidden");
+      $("report-diag-page").classList.remove("hidden");
+      $("report-modal").scrollTop = 0;
+    },
+
+    /* —— 从薄弱诊断子页切回主报告 —— */
+    backToReport() {
+      $("report-main").classList.remove("hidden");
+      $("report-diag-page").classList.add("hidden");
+      $("report-modal").scrollTop = 0;
     },
 
     _diagEmpty() {
@@ -176,6 +177,9 @@
     /* —— 关闭面板：隐藏 + 释放图表实例（防止重复打开堆积）—— */
     close() {
       $("report-modal").classList.add("hidden");
+      // 复位到主视图，避免下次打开停留在诊断子页
+      $("report-main").classList.remove("hidden");
+      $("report-diag-page").classList.add("hidden");
       this._dispose();
     },
 
@@ -339,7 +343,7 @@
       });
     },
 
-    /* —— 知识点串联结构图：每个知识点作为一张卡片，按学习顺序串联起来，横向蛇形排布，一目了然 —— */
+    /* —— 知识点辐射图：以中心「资料」为核，各知识点沿圆周向外辐射，一眼看清覆盖哪些知识点 —— */
     _renderTree(scriptChapters) {
       const el = $("report-tree");
       this._disposeTree(el);
@@ -357,45 +361,68 @@
       this._treeChart = chart;
 
       const n = scriptChapters.length;
-      const KW_MAX = 7;                       // 每张卡片标题截断到 ~7 字
-      const nodeTexts = scriptChapters.map((c, i) => kw(c.title || `知识点${i + 1}`, KW_MAX));
+      const KW_MAX = 6;
+      const texts = scriptChapters.map((c, i) => `#${i + 1} ${kw(c.title || "知识点", KW_MAX)}`);
 
-      // —— 横向蛇形排布：每行约 4 张卡片（按容器宽自适应），偶数行左→右，奇数行右→左 ——
-      const colW = 196;
-      const perRow = Math.max(3, Math.floor((el.clientWidth || 1100) / colW));
-      const rowH = 88;
+      // 画布中心与半径
+      const W = el.clientWidth || 1200;
+      const H = el.clientHeight || 460;
+      const cx = W / 2;
+      const cy = H / 2 + 4;
+      // 根据节点数决定半径，避免拥挤
+      const base = 46;                                  // 中心核半径
+      const gap = 20;                                   // 每个节点的水平占用
+      const maxR = Math.min(cx - 20, cy - 16) - 12;
+      const radius = Math.min(base + n * gap, maxR);
+      const start = -Math.PI / 2;                       // 从正上方开始顺时针辐射
 
-      const nodes = nodeTexts.map((text, idx) => {
-        const r = Math.floor(idx / perRow);
-        const c = idx % perRow;
-        const col = r % 2 === 0 ? c : perRow - 1 - c;
+      // 中心核节点
+      const hub = {
+        id: "hub",
+        name: "资料",
+        x: cx,
+        y: cy,
+        symbol: "circle",
+        symbolSize: 44,
+        label: { position: "inside" },
+        itemStyle: { color: "#f2a052", borderColor: "transparent" },
+      };
+
+      // 知识点节点沿圆周均布
+      const nodes = texts.map((t, i) => {
+        const ang = start + (i * 2 * Math.PI) / n;
         return {
-          id: "n" + idx,
-          name: `#${idx + 1}  ${text}`,
-          chapterTitle: scriptChapters[idx].title || "",
-          x: 28 + col * colW,
-          y: 24 + r * rowH,
+          id: "k" + i,
+          name: t,
+          chapterTitle: scriptChapters[i].title || "",
+          x: cx + Math.cos(ang) * radius,
+          y: cy + Math.sin(ang) * radius,
           symbol: "roundRect",
-          symbolSize: [colW - 20, 56],     // 每张卡片宽 ≈ colW-20，高 56
-          label: { show: true, position: "inside" },
+          symbolSize: [94, 34],
+          label: { show: true, position: "inside", width: 90, overflow: "truncate" },
         };
       });
 
-      const links = [];
-      for (let i = 0; i < n - 1; i++) {
-        links.push({ source: "n" + i, target: "n" + (i + 1) });
-      }
+      // 连线：中心 → 每个知识点（辐射主线），不做环线，保持清爽的「辐射图」
+      const links = nodes.map((nd) => ({ source: "hub", target: nd.id }));
 
-      // 主题感知的卡片配色（深 / 浅）
+      // 主题感知配色
       const isLight = document.documentElement.getAttribute("data-theme") === "light";
       const cardFill = isLight ? "#ffffff" : "#1e1b2c";
       const cardBorder = isLight ? "#d98a35" : "#f2a052";
       const cardLabel = isLight ? "#1a1620" : "#f2efe8";
       const cardShadow = isLight ? "rgba(217,138,53,.22)" : "rgba(242,160,82,.3)";
-      const edgeColor = isLight ? "rgba(180,110,40,.55)" : "rgba(242,160,82,.65)";
+      const spokeColor = isLight ? "rgba(180,110,40,.6)" : "rgba(242,160,82,.7)";
       const tooltipBg = isLight ? "#ffffff" : "#1b1a24";
       const tooltipText = isLight ? "#241f2e" : "#f2efe8";
       const tooltipBorder = isLight ? "rgba(27,24,32,.15)" : "rgba(242,239,232,.15)";
+
+      // 为每个 knowledge 节点注入卡片 itemStyle
+      nodes.forEach((nd) => {
+        nd.itemStyle = { color: cardFill, borderColor: cardBorder, borderWidth: 1.5, shadowBlur: 12, shadowColor: cardShadow };
+      });
+      // hub 保持琥珀实心
+      hub.itemStyle = { color: "#f2a052", borderColor: isLight ? "#c96a12" : "#ffba6c", borderWidth: 0, shadowBlur: 16, shadowColor: "rgba(242,160,82,.4)" };
 
       chart.setOption({
         tooltip: {
@@ -405,50 +432,23 @@
           formatter: (p) => {
             if (p.dataType === "edge") return "";
             const d = p.data;
-            const full = d.chapterTitle || d.name;
-            return `<b>${d.name || ""}</b>${full && full !== d.name ? "<br/>" + full : ""}`;
+            const full = d.chapterTitle || "";
+            return `<b>${d.name || ""}</b>${full ? "<br/>" + full : ""}`;
           },
         },
         series: [
           {
             type: "graph",
             layout: "none",
-            data: nodes,
+            data: [hub].concat(nodes),
             links,
             roam: true,                // 可拖动 / 滚轮缩放
-            draggable: true,
+            draggable: false,
             edgeSymbol: ["none", "arrow"],
-            edgeSymbolSize: [0, 9],
-            label: {
-              show: true,
-              position: "inside",
-              fontSize: 12,
-              fontWeight: 700,
-              color: cardLabel,
-              formatter: (p) => p.data.name,
-            },
-            lineStyle: {
-              color: edgeColor,
-              width: 2,
-              curveness: 0.0,           // 直连串联
-              opacity: .85,
-            },
-            emphasis: {
-              focus: "adjacency",
-              itemStyle: { borderColor: isLight ? "#c96a12" : "#ffba6c", borderWidth: 3 },
-              lineStyle: { color: isLight ? "#c96a12" : "#ffba6c", width: 3 },
-            },
-            itemStyle: {
-              color: cardFill,
-              borderColor: cardBorder,
-              borderWidth: 1.5,
-              shadowBlur: 14,
-              shadowColor: cardShadow,
-            },
-            top: 6,
-            bottom: 8,
-            left: 6,
-            right: 24,
+            edgeSymbolSize: [0, 7],
+            lineStyle: { color: spokeColor, width: 1.5, opacity: .9 },
+            label: { fontSize: 11, fontWeight: 700, color: cardLabel },
+            emphasis: { focus: "adjacency", scale: true, lineStyle: { color: isLight ? "#c96a12" : "#ffba6c", width: 2.4 } },
           },
         ],
       });
@@ -701,9 +701,11 @@
         diagBtn.addEventListener("click", () => {
           const id = Report._scriptId || (typeof Modes !== "undefined" && Modes.scriptId) || 0;
           if (!id) { Render.toast("请先进入学习再查看薄弱诊断。"); return; }
-          Report.toggleDiagnosis(id);
+          Report.openDiagnosis(id);
         });
       }
+      const backBtn = $("btn-report-back");
+      if (backBtn) backBtn.addEventListener("click", () => Report.backToReport());
     },
   };
 

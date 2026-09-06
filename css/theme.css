@@ -374,54 +374,121 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .user-menu-item { color: var(--ink-soft); }
 .user-menu-item:hover { background: var(--accent-soft); color: var(--accent-text); }
 
-/* ============ 11c. 学习报告面板（dashboard） ============ */
+/* ============ 11c. 学习报告面板（子页切换 + dashboard 网格） ============ */
 #report-modal .report-card {
   width: 96vw;
   max-width: 1500px;
   height: 92vh;
   max-height: 92vh;
   overflow-y: auto;
+  background: linear-gradient(180deg, #16131f, #0f0d16);
+}
+/* 页面：默认只显示 report-main；hidden 由 JS 切换 */
+.report-page { min-height: 100%; }
+.report-main, .report-diag-page { }
+.report-main.hidden, .report-diag-page.hidden { display: none; }
+
+/* 主报告头部：标题 + 「薄弱诊断」入口按钮同行 */
+.report-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.report-head-row .modal-title { margin-bottom: 0; }
+.btn-report-diag-btn {
+  cursor: pointer;
+  border: 1px solid rgba(242,160,82,.5);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 13px;
+  letter-spacing: .04em;
+  transition: all .18s ease;
+  white-space: nowrap;
+}
+.btn-report-diag-btn:hover { background: var(--accent); color: #17100a; }
+#report-main .report-desc { margin: 12px 0 14px; font-size: 13px; color: var(--ink-soft); }
+
+/* 主报告内容网格：默认两列；知识点掌握程度独占整行且拉高（最大化） */
+.report-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
   grid-auto-rows: min-content;
   gap: 14px 16px;
   align-items: start;
   align-content: start;
-  background: linear-gradient(180deg, #16131f, #0f0d16);
 }
-/* 报告操作条（薄弱诊断入口）独占整行 */
-.report-toolbar {
-  grid-column: 1 / -1;
+.report-stats { grid-column: 1 / -1; display: flex; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+.stat-tile { flex: 1; min-width: 130px; text-align: center; padding: 14px 8px; background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: var(--r-md); }
+.stat-num { font-size: 24px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.stat-label { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+
+/* 知识点掌握程度最大化：独占整行 + 更高 */
+.report-grid .mastery-main { grid-column: 1 / -1; }
+.mastery-main .report-echart { height: 380px; }
+
+/* 图表通用 */
+.report-chart-wrap { margin-bottom: 0; min-width: 0; }
+.report-chart-wrap:not(.mastery-main):not(.tree-wrap) { grid-column: span 1; }
+.report-chart-title, .report-chart-sub { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: .04em; margin-bottom: 8px; }
+.report-chart-sub { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+
+/* 作答情况分组：趋势 + 题型 上下并一块，占一列 */
+.report-answer-group {
+  grid-column: span 1;
+  background: rgba(255,255,255,.02);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+}
+.report-answer-group .report-chart-title { margin-bottom: 4px; }
+.report-answer-group .report-echart { height: 190px; }
+
+/* 知识点辐射图独占整行 */
+.report-card .tree-wrap { grid-column: 1 / -1; }
+.tree-wrap .report-tree { height: 470px; }
+.report-empty { grid-column: 1 / -1; padding: 30px 0; text-align: center; color: var(--ink-soft); }
+.report-card #btn-report-close { grid-column: 1 / -1; justify-self: center; }
+
+/* 薄弱诊断全屏子页 */
+.report-diag-page { padding: 4px 4px 30px; }
+.report-page-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  margin-bottom: 2px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
 }
-.btn-report-diag {
-  border: 1px solid rgba(242,160,82,.5);
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  letter-spacing: .04em;
+.report-page-title { font-size: 20px; font-weight: 800; color: var(--accent-text); letter-spacing: .1em; }
+#btn-report-back { border-radius: 999px; padding: 8px 18px; }
+#report-diag-page .report-desc { margin-bottom: 14px; font-size: 13px; color: var(--ink-soft); }
+
+/* 诊断列表（全宽纵向排列） */
+.report-diagnosis-full {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.btn-report-diag:hover { background: var(--accent); color: #17100a; }
-.btn-report-diag.active { background: var(--accent); color: #17100a; box-shadow: 0 0 0 3px var(--accent-soft); }
-.report-diag-hint { font-size: 12px; color: var(--ink-soft); }
-
-/* 知识点串联结构图：蛇形多行排布，需要更高一些的空间 */
-.report-card .tree-wrap { grid-column: 1 / -1; }
-.tree-wrap .report-tree { height: 460px; }
-.report-chart-wrap { margin-bottom: 0; min-width: 0; }
-
-/* 诊断面板 */
-.diagnosis-wrap { grid-column: 1 / -1; }
-.report-diagnosis { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
-.diag-item { background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: var(--r-md); }
-.diag-title, .diag-action { color: var(--ink); }
-.diag-summary, .diag-prereq, .diag-mastery-num { color: var(--ink-soft); }
-.diag-summary b, .diag-order { color: var(--accent); }
-.diag-num { background: var(--accent); color: #17100a; }
-.diag-mastery-track { background: rgba(255,255,255,.07); }
-.diag-mastery-fill { background: linear-gradient(90deg, #f6a95c, var(--accent-dark)); }
+.diag-item { background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 16px; }
+.diag-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.diag-num { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #17100a; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; }
+.diag-title { flex: 1; font-weight: 700; font-size: 15px; color: var(--ink); }
+.diag-chip { flex-shrink: 0; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+.diag-mastery { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.diag-mastery-track { flex: 1; height: 9px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+.diag-mastery-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f6a95c, var(--accent-dark)); }
+.diag-mastery-num { flex-shrink: 0; font-size: 12px; color: var(--ink-soft); width: 60px; text-align: right; }
+.diag-action { margin-top: 4px; font-size: 13px; color: var(--ink); line-height: 1.6; }
+.diag-prereq { margin-top: 4px; font-size: 12px; color: var(--ink-soft); }
+.diag-summary { font-size: 13px; color: var(--ink-soft); margin-bottom: 10px; }
+.diag-summary b { color: var(--accent); }
+.diag-order { font-size: 13px; color: var(--accent); font-weight: 700; margin-bottom: 12px; line-height: 1.7; }
 .diag-due { background: rgba(255,122,107,.16); color: #ffb0a5; }
 .diag-weak { background: rgba(242,160,82,.16); color: #f7c489; }
 .diag-untouched { background: rgba(255,255,255,.06); color: var(--ink-soft); }
