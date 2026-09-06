@@ -3,16 +3,47 @@
  * ═══════════════════════════════════════════════ */
 
 :root {
-  --ink: #2a2a35;
-  --ink-soft: #55555f;
-  --line: #d8d5cd;
-  --panel: #f4f1ea;
-  --accent: #7c6bd5;
-  --accent-dark: #5f51ab;
-  --good: #2e7d32;
-  --bad: #c62828;
+  /* ── 暗夜剧场 · Ink & Candlelight 设计令牌 ── */
+  /* 基调：深墨近黑，发丝线边框，单一琥珀强调色（"灯"） */
+  --ink: #f2efe8;                 /* 主文字：暖近白 */
+  --ink-soft: #b7b1c2;            /* 次级文字 */
+  --line: rgba(242, 239, 232, 0.14);
+  --line-strong: rgba(242, 239, 232, 0.24);
+  --panel: #17161f;               /* 面板深底 */
+  --panel-2: #1e1d28;
+  --surface-glass: rgba(24, 22, 32, 0.62);
+  --accent: #f2a052;              /* 灯/琥珀：唯一强调 */
+  --accent-soft: rgba(242, 160, 82, 0.16);
+  --accent-dark: #e8884a;
+  --accent-text: #fff6ea;
+  --good: #5fce8b;
+  --bad: #ff7a6b;
+  --warn: #e8c25f;
+  --backdrop-glow-1: rgba(122, 96, 204, 0.16);   /* 冷紫氛围 */
+  --backdrop-glow-2: rgba(242, 160, 82, 0.10);   /* 暖琥珀氛围 */
   --dialog-height: 190px;
   --base-font: 16px;               /* 全局字体基准，设置里可调节 */
+
+  /* 字阶（1.25 比例，展示字用重量+字距驱动） */
+  --fs-xs: 12px; --fs-sm: 13px; --fs-base: 15px; --fs-md: 17px;
+  --fs-lg: 20px; --fs-xl: 26px; --fs-2xl: 34px; --fs-display: 46px;
+  --track-wide: 0.08em; --track-title: 0.28em; --track-tight: -0.01em;
+
+  /* 间距梯度 */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 40px; --sp-7: 64px;
+
+  /* 圆角 */
+  --r-sm: 6px; --r-md: 10px; --r-lg: 16px; --r-pill: 999px;
+
+  /* 阴影（带环境色） */
+  --shadow-1: 0 2px 10px rgba(0, 0, 0, 0.28);
+  --shadow-2: 0 8px 30px rgba(0, 0, 0, 0.40);
+  --shadow-3: 0 24px 70px rgba(0, 0, 0, 0.55);
+
+  /* 动效 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 160ms; --dur-base: 320ms; --dur-slow: 640ms;
 }
 
 * {

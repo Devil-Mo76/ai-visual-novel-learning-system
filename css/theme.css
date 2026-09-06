@@ -1,0 +1,355 @@
+/* ═══════════════════════════════════════════════════════════════
+ * theme.css —「暗夜剧场 · Ink & Candlelight」主题层
+ * ------------------------------------------------------------------
+ * 在 style.css（布局源）之后加载。所有选择器与 style.css 同名，
+ * 仅覆盖视觉层（色 / 面 / 字 / 氛围 / 动效），不改变任何布局结构，
+ * 因此全部 JS 行为不受影响。若要整体回滚，删除 index.html 中本文件的
+ * <link> 即可回到原视觉。
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* ============ 1. 全局氛围层（固定背景光晕 + 颗粒 + 暗角） ============ */
+html, body { background: #0d0c12; }
+
+/* 冷紫 + 暖琥珀 两团氛围光，覆盖在深底上，制造"戏台"纵深 */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(70rem 46rem at 8% -12%, var(--backdrop-glow-1), transparent 62%),
+    radial-gradient(58rem 44rem at 106% 6%, var(--backdrop-glow-2), transparent 58%),
+    radial-gradient(40rem 34rem at 50% 116%, rgba(70, 60, 120, 0.10), transparent 60%);
+}
+
+/* 细颗粒，压住"纯色平涂"的塑料感 */
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: .05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 所有屏内可交互表面放到氛围层之上 */
+.screen, .login-overlay, .user-avatar, .toast, .modal { isolation: isolate; }
+
+/* ============ 2. 排版基础 ============ */
+html, body {
+  font-family: "PingFang SC", "Source Han Sans SC", "Noto Sans CJK SC",
+               "Microsoft YaHei", "微软雅黑", sans-serif;
+  color: var(--ink);
+  font-feature-settings: "tnum";
+}
+.screen-header h2, .menu-title, .login-title, .modal-title,
+.upload-title, .library-title, .group-title { font-weight: 800; letter-spacing: var(--track-title); }
+button, input, select, textarea { font-family: inherit; }
+
+/* 统一可访问焦点圈：可见的琥珀描边 */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+button:focus, a:focus, input:focus, select:focus, textarea:focus { outline: none; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+/* ============ 3. 主菜单 ============ */
+#screen-menu {
+  background:
+    radial-gradient(80rem 60rem at 78% -10%, rgba(242,160,82,.10), transparent 60%),
+    radial-gradient(70rem 52rem at -6% 20%, rgba(122,96,204,.16), transparent 60%),
+    linear-gradient(160deg, #0d0c13 0%, #15131f 55%, #120f1c 100%);
+}
+.menu-backdrop::after {
+  background: linear-gradient(165deg,
+    rgba(13,12,19,0.88) 0%, rgba(15,13,24,0.72) 55%, rgba(18,15,28,0.78) 100%);
+}
+.menu-container { text-align: left; }                 /* 破格：从"居中模板"改为左对齐编辑感 */
+.menu-title {
+  font-size: clamp(30px, 6vw, 56px);
+  line-height: 1.05;
+  letter-spacing: 0.10em;
+  color: var(--accent-text);
+  text-shadow: 0 0 22px rgba(242,160,82,.22);
+}
+/* 标题左上琥珀短划，打破居中的死板 */
+.menu-title::before {
+  content: ""; display: block; width: 52px; height: 4px;
+  margin-bottom: 18px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+}
+.menu-subtitle { font-size: 14px; color: var(--ink-soft); letter-spacing: .22em; margin: 14px 0 46px; }
+.menu-nav { gap: 14px; align-items: stretch; }
+.menu-btn {
+  background: transparent;
+  border: 0; border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--ink); font-size: 17px; letter-spacing: .24em; text-align: left;
+  padding: 14px 6px; transition: color .2s var(--ease-out), padding-left .25s var(--ease-out), border-color .2s;
+  position: relative;
+}
+.menu-btn::after {                                   /* 悬停琥珀刻度 */
+  content: ""; position: absolute; left: 0; bottom: -1px; width: 0; height: 2px;
+  background: var(--accent); transition: width .28s var(--ease-out);
+}
+.menu-btn:hover { background: transparent; border-color: var(--line-strong); color: var(--accent-text); padding-left: 18px; }
+.menu-btn:hover::after { width: 46px; }
+.menu-status { color: var(--ink-soft); margin-top: 30px; }
+
+/* ============ 4. 通用屏头 + 全局玻璃 ============ */
+.screen-header {
+  background: rgba(23,21,31,0.88);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.screen-header h2 { font-size: 18px; letter-spacing: .2em; color: var(--ink); }
+.screen-header h2::before { content: ""; display:inline-block; width:3px; height:16px; background: var(--accent); margin-right:12px; vertical-align:-2px; }
+.btn-back, .btn-ghost {
+  color: var(--ink-soft); border: 1px solid var(--line-strong); background: transparent; border-radius: var(--r-sm);
+}
+.btn-back:hover, .btn-ghost:hover { color: var(--accent-text); border-color: var(--accent); background: var(--accent-soft); }
+
+/* ============ 5. 资料库 / 开始学习 ============ */
+.upload-card, .library-card {
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+}
+.upload-title, .library-title { color: var(--ink); letter-spacing: .1em; }
+.upload-hint, .library-subtitle, .goal-hint, .field-hint { color: var(--ink-soft); }
+
+/* 列表卡片：发丝边 + 悬停描光 */
+.doc-item { background: rgba(30,28,40,.5); border: 1px solid var(--line); border-radius: var(--r-md); }
+.doc-item:hover { border-color: var(--line-strong); background: rgba(38,35,50,.6); }
+.doc-item.doc-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset, 0 6px 24px rgba(0,0,0,.32);
+  background: linear-gradient(180deg, rgba(242,160,82,.12), rgba(30,28,40,.55));
+}
+.doc-name { color: var(--ink); font-weight: 700; }
+.doc-meta, .doc-preview { color: var(--ink-soft); }
+.doc-tool { color: var(--ink-soft); border-color: var(--line-strong); background: transparent; }
+.doc-tool:hover { background: var(--accent); border-color: var(--accent); color: #151018; }
+.doc-enter, .doc-edit { background: linear-gradient(180deg, #f6a95c, var(--accent-dark)); color: #17100a; font-weight: 700; }
+.doc-enter:hover, .doc-edit:hover { filter: brightness(1.06); }
+.doc-del { border-color: rgba(255,122,107,.35); background: rgba(255,122,107,.08); color: #ff9a8c; }
+.doc-del:hover { background: var(--bad); border-color: var(--bad); color: #fff; }
+
+/* 背景说明 / 生成栏 / 上传区 */
+.goal-box, .doc-generate-bar { background: rgba(28,26,38,.55); border: 1px solid var(--line); border-radius: var(--r-md); }
+.goal-textarea, .gen-select, .field-input {
+  background: rgba(12,11,18,.6); border: 1px solid var(--line-strong); color: var(--ink); border-radius: var(--r-sm);
+}
+.goal-textarea::placeholder, .field-input::placeholder { color: rgba(183,177,194,.5); }
+.goal-textarea:focus, .gen-select:focus, .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.drop-area { border: 1.5px dashed var(--line-strong); background: rgba(30,28,40,.4); border-radius: var(--r-md); }
+.drop-area:hover, .drop-area.drag-hover { border-color: var(--accent); background: var(--accent-soft); }
+.drop-icon { filter: saturate(.9); }
+.drop-text { color: var(--ink-soft); }
+
+/* ============ 6. 按钮统一 ============ */
+.btn-primary {
+  background: linear-gradient(180deg, #f6a95c, var(--accent-dark));
+  color: #17100a; font-weight: 700; letter-spacing: .06em;
+  border-radius: var(--r-sm); border: 0;
+  transition: transform .12s ease, box-shadow .2s var(--ease-out), filter .2s;
+  box-shadow: 0 6px 18px rgba(242,160,82,.18);
+}
+.btn-primary:hover { filter: brightness(1.06); box-shadow: 0 10px 26px rgba(242,160,82,.28); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(1px); }
+.btn-primary:disabled { opacity: .38; box-shadow: none; cursor: not-allowed; }
+
+/* ============ 7. 设置 ============ */
+.settings-group {
+  background: var(--surface-glass); border: 1px solid var(--line);
+  border-radius: var(--r-lg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-1);
+}
+.group-title { color: var(--ink); border-bottom: 1px solid var(--line); }
+.field-label, .gen-label { color: var(--ink); font-weight: 600; }
+.quiz-check { color: var(--ink); }
+.quiz-check input { accent-color: var(--accent); }
+
+/* 模型路由状态徽标 */
+.router-status { color: var(--ink-soft); }
+.badge { border-radius: var(--r-sm); }
+.font-preview { color: var(--ink-soft); }
+
+/* ============ 8. 播放器 ============ */
+#screen-player { background: #0a0910; }
+.bg-layer::after {                                   /* 影院暗角，让人物更"立" */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% 8%, transparent 55%, rgba(5,4,9,.55) 100%),
+    linear-gradient(0deg, rgba(5,4,9,.55) 0%, transparent 26%);
+}
+/* 章节条：琥珀刻度 + 深玻璃 */
+.chapter-bar {
+  background: rgba(10,9,16,.66); color: var(--accent-text);
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-1); letter-spacing: .22em; font-size: 13px;
+}
+.chapter-bar::before { content: "◆ "; color: var(--accent); font-size: 9px; }
+
+/* 对话栏：墨玻璃字幕面板 + 顶部琥珀引线 */
+.dialog-box {
+  background: linear-gradient(180deg,
+    rgba(16,15,23,0.92), rgba(13,12,20,0.94));
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: 0 14px 44px rgba(0,0,0,.5);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.dialog-name {
+  background: var(--accent); color: #17100a; font-weight: 800;
+  letter-spacing: .12em; border-radius: var(--r-pill);
+}
+.dialog-text { color: var(--ink); }
+.dialog-done .dialog-text { color: var(--accent); }
+
+/* 讲师输入行在墨面板上 */
+.lecture-input-row .q-input {
+  background: rgba(12,11,18,.6); color: var(--ink); border: 1px solid var(--line-strong);
+}
+
+/* 底部控制栏 */
+.control-bar { background: rgba(13,12,19,0.9); border-top: 1px solid var(--line); backdrop-filter: blur(10px); }
+.ctl-btn {
+  background: rgba(255,255,255,.03); border: 1px solid var(--line-strong);
+  color: var(--ink-soft); border-radius: var(--r-sm); transition: all .16s ease;
+}
+.ctl-btn:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
+.ctl-btn.active, .control-primary .ctl-btn.active { background: var(--accent); border-color: var(--accent); color: #17100a; font-weight: 700; }
+.control-primary .ctl-btn { border-color: var(--line-strong); color: var(--ink-soft); }
+.control-primary .ctl-btn:hover, .control-primary .ctl-btn.active { background: var(--accent); color: #17100a; }
+.ctl-sep { background: var(--line-strong); }
+.control-hint { color: rgba(183,177,194,.55); letter-spacing: .18em; }
+
+/* 悬浮按钮 */
+.report-fab, .lecture-fab, .wrongbook-fab {
+  background: rgba(13,12,19,0.86); border: 1px solid var(--line-strong);
+  color: var(--accent-text); backdrop-filter: blur(8px); box-shadow: var(--shadow-2);
+  letter-spacing: .06em;
+}
+.report-fab:hover, .lecture-fab:hover, .wrongbook-fab:hover { background: var(--accent); color: #17100a; border-color: var(--accent); }
+
+/* ============ 9. 弹题框 ============ */
+.question-box {
+  background: var(--surface-glass);
+  border: 1px solid var(--line-strong); border-radius: var(--r-lg);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-3);
+}
+.q-title { color: var(--accent); letter-spacing: .2em; font-weight: 800; }
+.q-text, .q-asker { color: var(--ink); }
+.q-choice {
+  background: rgba(30,28,40,.5); border: 1px solid var(--line-strong);
+  color: var(--ink); transition: all .15s ease;
+}
+.q-choice:hover { border-color: var(--accent); background: var(--accent-soft); }
+.q-choice.picked { border-color: var(--accent); background: var(--accent-soft); }
+.q-choice.correct { border-color: var(--good); background: rgba(95,206,139,.14); }
+.q-choice.wrong { border-color: var(--bad); background: rgba(255,122,107,.14); }
+.q-input { background: rgba(12,11,18,.6); color: var(--ink); border: 1px solid var(--line-strong); }
+.q-input::placeholder { color: rgba(183,177,194,.5); }
+.q-feedback { color: var(--ink-soft); }
+
+/* ============ 10. 弹窗 / 面板 ============ */
+.modal { background: rgba(5,4,9,0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.modal-card {
+  background: linear-gradient(180deg, #1a1826, #141220);
+  border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+}
+.modal-title { color: var(--accent-text); letter-spacing: .14em; }
+.modal-desc, .report-desc, .edit-desc, .wrongbook-desc { color: var(--ink-soft); }
+
+/* 选项卡 */
+.htab-btn { background: transparent; border: 0; color: var(--ink-soft); border-bottom: 2px solid transparent; }
+.htab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+.htab-bar { border-bottom: 1px solid var(--line); }
+
+/* 历史 / 报告 / 错题 条目 */
+.hist-item, .archive-item, .wrong-item, .stat-tile {
+  background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.hist-item:hover, .archive-item:hover { border-color: var(--accent); background: var(--accent-soft); }
+.stat-num { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 800; }
+.stat-label, .report-chart-title { color: var(--ink-soft); }
+
+/* 存档槽位 */
+.slot-cell { background: rgba(30,28,40,.55); border: 1px solid var(--line-strong); }
+.slot-cell:hover { border-color: var(--accent); background: var(--accent-soft); }
+.slot-name { color: var(--ink); }
+.slot-info, .slot-time, .slot-empty, .slot-empty-tip { color: var(--ink-soft); }
+.archive-current { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+.slot-overwrite { border: 1px solid var(--line-strong); background: rgba(242,160,82,.1); color: var(--accent); }
+.slot-overwrite:hover { background: var(--accent); color: #17100a; }
+.archive-del { border-color: rgba(255,122,107,.35); background: rgba(255,122,107,.08); color: #ff9a8c; }
+.archive-del:hover { background: var(--bad); border-color: var(--bad); color: #fff; }
+.archive-section-hint { color: var(--ink-soft); letter-spacing: .08em; }
+
+/* 编辑剧本 */
+.edit-textarea { background: rgba(8,7,12,.8); color: #d8f0dc; border: 1px solid var(--line-strong); font-family: "JetBrains Mono", Consolas, monospace; font-size: 13px; line-height: 1.6; }
+.edit-error { color: var(--bad); }
+
+/* ============ 11. Toast & 演示角标 ============ */
+.toast {
+  background: rgba(242,239,232,.1); color: var(--ink);
+  border: 1px solid var(--line-strong); backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-2); letter-spacing: .04em;
+}
+.demo-badge { background: var(--accent); color: #17100a; font-weight: 800; }
+
+/* ============ 11b. 登录 / 用户菜单（并入暗夜剧场） ============ */
+#screen-library, #screen-settings {
+  background:
+    linear-gradient(rgba(13,12,19,.72), rgba(13,12,19,.72)),
+    url("../images/前端背景/前端背景.png");
+  background-size: cover; background-position: center;
+}
+.login-overlay {
+  background:
+    linear-gradient(180deg, rgba(9,8,14,.30) 0%, rgba(9,8,14,.55) 100%),
+    url("../images/前端背景/登录背景.png");
+  background-size: cover; background-position: center;
+}
+.login-card {
+  background: linear-gradient(180deg, rgba(26,24,36,.78), rgba(18,16,28,.88));
+  border: 1px solid var(--line-strong); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  text-align: center; color: var(--ink);
+}
+.login-logo img { border: 2px solid var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.login-title { color: var(--ink); font-size: 26px; letter-spacing: .18em; text-shadow: none; }
+.login-subtitle { color: var(--ink-soft); letter-spacing: .22em; }
+.login-label { color: var(--ink-soft); letter-spacing: .12em; }
+.login-input {
+  background: rgba(8,7,12,.6); border: 1px solid var(--line-strong); color: var(--ink);
+}
+.login-input::placeholder { color: rgba(183,177,194,.5); }
+.login-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); background: rgba(8,7,12,.8); }
+.login-btn {
+  background: linear-gradient(180deg, #f6a95c, var(--accent-dark));
+  color: #17100a; letter-spacing: .3em; box-shadow: 0 8px 22px rgba(242,160,82,.22);
+}
+.login-btn:hover { filter: brightness(1.08); }
+.login-hint { color: rgba(183,177,194,.62); }
+.user-avatar { border: 2px solid var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.user-menu { background: var(--surface-glass); border: 1px solid var(--line); backdrop-filter: blur(14px); border-radius: var(--r-md); box-shadow: var(--shadow-2); }
+.user-menu-name { color: var(--ink); }
+.user-menu-item { color: var(--ink-soft); }
+.user-menu-item:hover { background: var(--accent-soft); color: var(--accent-text); }
+
+/* ============ 12. 动效降级 ============ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ============ 13. 响应式微调 ============ */
+@media (max-width: 860px) {
+  .upload-card, .library-card, .settings-group { backdrop-filter: blur(12px); }
+}
+@media (max-width: 620px) {
+  .screen-header h2 { letter-spacing: .12em; }
+}
