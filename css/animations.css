@@ -35,6 +35,11 @@
   to   { opacity: 1; }
 }
 
+/* 每次切背景时显式触发（render.js 里 remove+void reflow+add 重启动画） */
+.bg-fade {
+  animation: bgFade 0.7s ease;
+}
+
 /* 对话栏上滑 */
 @keyframes dialogSlide {
   from { transform: translateY(18px); opacity: 0; }
@@ -43,6 +48,11 @@
 
 .dialog-box {
   animation: dialogSlide 0.3s ease-out;
+}
+
+/* 每句台词展示时重新上滑入场（render.js 的 showDialogBox 里触发） */
+.dialog-enter {
+  animation: dialogSlide 0.28s ease-out;
 }
 
 /* 弹题窗弹出 */

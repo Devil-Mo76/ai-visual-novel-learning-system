@@ -24,6 +24,8 @@ const Modes = {
   onlyWrong: false,         // 只看错题模式开启？
   wrongQuestions: [],       // 错题目标列表 [{chapter_index, step_index}](来自接口第8条)
 
+  reviewMode: "smart",   // smart=智能复习 / naive=普通复习（实验对照）
+
   // 自动播放延时（比打字时长多一点，保证台词播完才推进）
   autoDelayMs: 2500,
 

@@ -13,6 +13,15 @@
 
   const $ = (id) => document.getElementById(id);
 
+  // 转义 HTML 特殊字符，防止模型返回文本里的标签破坏渲染
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   /* ────────── 屏幕切换 ────────── */
   const SCREENS = ["screen-menu", "screen-library", "screen-settings", "screen-player"];
 
@@ -21,6 +30,14 @@
       document.getElementById(s).classList.toggle("active", s === name);
     });
     document.body.classList.toggle("player-visible", name === "screen-player");
+
+    // 头像 / 用户面板仅出现在主页（其它界面强制隐藏）
+    const onMenu = name === "screen-menu";
+    const avatarEl = document.getElementById("user-avatar");
+    const userMenuEl = document.getElementById("user-menu");
+    if (avatarEl) avatarEl.classList.toggle("screen-hidden", !onMenu);
+    if (userMenuEl && !onMenu) userMenuEl.classList.add("hidden");
+
     if (name !== "screen-player") {
       // 离开播放器时取消自动播放
       Modes.resetRun();
@@ -31,9 +48,57 @@
     }
   }
 
-  /* ────────── 主菜单「读取存档」弹窗（标注资料名）────────── */
-  async function openArchiveModal() {
-    const listEl = $("archive-list");
+  /* ────────── 存档统一面板：主界面「读取」 + 游戏内「存档」（保存+读取）────────── */
+  // opts.currentScriptId：游戏内传入当前剧本 id，则顶部显示「保存当前进度」区；
+  // 读取列表始终展示全部存档并标注学习资料名，当前剧本的存档会高亮。
+  async function openArchiveModal(opts = {}) {
+    const curId = opts.currentScriptId || null;
+    const hasCtx = curId != null && !!Modes.scriptId;
+    $("archive-title").textContent = hasCtx ? "存档（保存 · 读取）" : "读取存档";
+
+    // —— 保存区（仅游戏内有当前剧本时展示）——
+    const saveArea = $("archive-save-area");
+    const saveGrid = $("archive-save-grid");
+    if (hasCtx) {
+      saveArea.classList.remove("hidden");
+      saveGrid.innerHTML = "";
+      let slots = [];
+      try {
+        const d = await Api.listSlots(curId);
+        slots = d.slots || [];
+      } catch (e) { /* 读档列表失败不阻断 */ }
+      for (let i = 0; i <= 9; i++) {
+        const hit = slots.find((s) => s.slot === i);
+        const cell = document.createElement("div");
+        cell.className = "slot-cell " + (hit ? "slot-occupied" : "slot-empty");
+        cell.innerHTML = hit
+          ? `<div class="slot-name">${i === 0 ? "⭐ 自动档" : "档 " + i}</div>` +
+            `<div class="slot-time">第 ${hit.chapter_index + 1} 章</div>` +
+            `<div class="slot-empty-tip">点击覆盖保存</div>`
+          : `<div class="slot-name">${i === 0 ? "⭐ 自动档" : "档 " + i}</div>` +
+            `<div class="slot-empty-tip">空 · 点击保存当前进度</div>`;
+        cell.addEventListener("click", async () => {
+          const label = i === 0 ? "自动档" : `档 ${i}`;
+          try {
+            await Api.saveProgress(curId, Modes.chapterIndex, Modes.stepIndex, i);
+            Render.toast(`已保存到 ${label}`);
+            openArchiveModal(opts);   // 刷新保存区，让刚存的槽变占用态
+          } catch (err) {
+            Render.toast(`保存失败：${err.message}`);
+          }
+        });
+        saveGrid.appendChild(cell);
+      }
+    } else {
+      saveArea.classList.add("hidden");
+    }
+
+    // —— 读取区（全部存档，标注资料名）——
+    await renderArchiveList($("archive-list"), curId);
+    $("modal-archive").classList.remove("hidden");
+  }
+
+  async function renderArchiveList(listEl, curId) {
     listEl.innerHTML = "";
     try {
       const list = await Api.listArchive();
@@ -43,7 +108,7 @@
       }
       list.forEach((a) => {
         const item = document.createElement("div");
-        item.className = "archive-item";
+        item.className = "archive-item" + (a.script_id === curId ? " archive-current" : "");
         item.innerHTML =
           `<div class="archive-doc">📄 ${a.document_title || "（未命名资料）"}</div>` +
           `<div class="archive-meta">${a.slot === 0 ? "⭐ 自动存档" : `手动存档 ${a.slot}`} · 第 ${a.chapter_index + 1} 章 · ${formatDateTimeShort(a.updated_at)}</div>` +
@@ -58,15 +123,14 @@
             Render.toast(`加载存档失败：${err.message}`);
           }
         });
-        // 删除按钮：单独处理，阻止冒泡到「读档」；删完刷新列表（需求2）
+        // 删除按钮：阻止冒泡，删完刷新
         item.querySelector(".archive-del").addEventListener("click", async (e) => {
           e.stopPropagation();
           if (!confirm(`确认删除「${a.document_title || "未命名资料"}」的${a.slot === 0 ? "自动存档" : `手动存档 ${a.slot}`}？`)) return;
           try {
             await Api.deleteProgress(a.script_id, a.slot);
             Render.toast("存档已删除");
-            listEl.innerHTML = "";
-            openArchiveModal();
+            await renderArchiveList(listEl, curId);   // 就地刷新读取区
           } catch (err) {
             Render.toast(`删除失败：${err.message}`);
           }
@@ -76,7 +140,6 @@
     } catch (err) {
       listEl.innerHTML = `<div class="archive-empty">读取存档失败：${err.message}</div>`;
     }
-    $("modal-archive").classList.remove("hidden");
   }
 
   function formatDateTimeShort(iso) {
@@ -127,6 +190,24 @@
   /* ────────── 开始学习 / 资料库 ────────── */
   let selectedDocId = null;
   let lastScriptId = null;
+  let demoMode = false;   // 演示模式：无 Key/断网也能用样例数据（P1）
+
+  // 按 demoMode 同步「演示角标 + 资料库载入演示按钮」显隐
+  function updateDemoBadge() {
+    const badge = $("demo-badge");
+    const loadBtn = $("btn-load-demo");
+    if (badge) badge.classList.toggle("hidden", !demoMode);
+    if (loadBtn) loadBtn.classList.toggle("hidden", !demoMode);
+  }
+
+  async function loadSettingsBadge() {
+    try {
+      const s = await Api.getSettings();
+      demoMode = Boolean(s.demo_mode);
+      Modes.reviewMode = s.review_mode || "smart";
+      updateDemoBadge();
+    } catch {}
+  }
 
   async function openLibrary() {
     showScreen("screen-library");
@@ -155,8 +236,15 @@
           `</div>` +
           `<div class="doc-btns">` +
           (d.has_script
-            ? `<button class="doc-enter" data-enter="${d.id}" data-script="${d.latest_script_id}" title="直接进入学习">▶ 进入学习</button>` +
-              `<button class="doc-edit" data-editscript="${d.latest_script_id}" title="编辑该剧本的标题/背景/台词/题目">✏ 编辑剧本</button>`
+            ? `<div class="doc-btns-row">
+                 <button class="doc-enter" data-enter="${d.id}" data-script="${d.latest_script_id}" title="直接进入学习">▶ 进入学习</button>
+                 <button class="doc-edit" data-editscript="${d.latest_script_id}" title="编辑剧本（标题/背景/台词/题目）">✏ 编辑剧本</button>
+               </div>
+               <div class="doc-btns-row doc-tools">
+                 <button class="doc-tool" data-tool="report" data-script="${d.latest_script_id}" title="查看该剧本学习报告">📊 报告</button>
+                 <button class="doc-tool" data-tool="wrongbook" data-script="${d.latest_script_id}" title="打开该剧本错题本">📕 错题</button>
+                 <button class="doc-tool" data-tool="wrongreview" data-script="${d.latest_script_id}" title="进入只看错题复习">🔁 错题复习</button>
+               </div>`
             : "") +
           `<button class="doc-del" data-del="${d.id}" title="删除该资料">✕</button>` +
           `</div>` +
@@ -191,6 +279,22 @@
             openEditScript(scriptId);
           });
         }
+        // 资料库入口补齐：📊 报告 / 📕 错题本 / 🔁 错题复习（按当前文档的剧本）
+        li.querySelectorAll(".doc-tool").forEach((toolBtn) => {
+          toolBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const scriptId = Number(toolBtn.dataset.script);
+            const tool = toolBtn.dataset.tool;
+            if (tool === "report") {
+              Report.open(scriptId);   // 打开学习报告（无需先进播放器）
+            } else if (tool === "wrongbook") {
+              WrongBook.open(scriptId);   // 打开错题本（无需先进播放器）
+            } else if (tool === "wrongreview") {
+              Streaming.playOnlyWrong(scriptId);   // 加载剧本并直接进入只看错题复习
+              showScreen("screen-player");
+            }
+          });
+        });
         // 点击删除按钮 → 删除（阻止冒泡到选中）
         li.querySelector(".doc-del").addEventListener("click", async (e) => {
           e.stopPropagation();
@@ -315,13 +419,12 @@
       if (file) doUpload(file);
     });
 
-    // 基于选中资料生成剧本（章节数取自下拉框）
+    // 基于选中资料生成剧本（章节按资料主题考点自动划分，无需手动指定章节数）
     $("btn-generate").addEventListener("click", async () => {
       if (!selectedDocId) {
         $("gen-status").textContent = "请先在列表中选择一份资料。";
         return;
       }
-      const chapterCount = Number($("chapter-count").value) || 3;
       const learningGoal = $("learning-goal").value.trim();
       // 需求3：读取弹题类型勾选（选择题/填空题/简答题）
       const quizTypes = [];
@@ -330,16 +433,38 @@
       if ($("qtype-short") && $("qtype-short").checked) quizTypes.push("short");
       if (!quizTypes.length) quizTypes.push("choice");  // 至少保留选择题作兜底
       const statusEl = $("gen-status");
-      statusEl.textContent = `正在生成教学剧本（${chapterCount} 章，题型：${quizTypes.join("/")}，可能需数十秒）…`;
+      statusEl.textContent = `正在按资料主题考点生成剧本（题型：${quizTypes.join("/")}，可能需数十秒）…`;
       statusEl.classList.add("spin");
       try {
-        const out = await Api.generateScript(selectedDocId, chapterCount, learningGoal, quizTypes);
+        const out = await Api.generateScript(selectedDocId, learningGoal, quizTypes);
         lastScriptId = out.script_id;
         statusEl.textContent = `剧本生成成功：${out.script.title}`;
         // 需求1：生成完成后不直接进入学习，弹出提示框让用户选择
         showGenerateDoneModal(out.script_id, out.script.title);
       } catch (err) {
         statusEl.textContent = `生成失败：${err.message}`;
+      } finally {
+        statusEl.classList.remove("spin");
+      }
+    });
+
+    // 演示模式「载入演示资料并生成」：后端 demo 路径会自动为当前用户建样例文档+剧本
+    $("btn-load-demo").addEventListener("click", async () => {
+      if (!demoMode) {
+        Render.toast("请先在「设置」中开启「演示模式」。");
+        return;
+      }
+      const statusEl = $("gen-status");
+      statusEl.textContent = "正在载入演示样例资料并生成示例剧本…";
+      statusEl.classList.add("spin");
+      try {
+        const out = await Api.generateScript(0, "", ["choice", "fill", "short"]);
+        lastScriptId = out.script_id;
+        statusEl.textContent = `演示剧本已生成：《${out.script.title}》`;
+        showGenerateDoneModal(out.script_id, out.script.title);
+        await refreshDocList();
+      } catch (err) {
+        statusEl.textContent = `载入演示失败：${err.message}`;
       } finally {
         statusEl.classList.remove("spin");
       }
@@ -379,6 +504,14 @@
       const s = await Api.getSettings();
       $("set-api-base").value = s.api_base;
       $("set-model").value = s.model;
+      $("set-thinking").value = s.thinking_level || "high";
+      $("set-web-search").checked = Boolean(s.web_search);
+      $("set-demo-mode").checked = Boolean(s.demo_mode);
+      demoMode = Boolean(s.demo_mode);
+      updateDemoBadge();
+      $("set-review-mode").value = s.review_mode || "smart";
+      Modes.reviewMode = s.review_mode || "smart";
+      $("set-llm-engine").value = s.llm_engine || "auto";
       $("key-hint").textContent = s.api_key_set
         ? `密钥已配置：${s.key_masked}（留空保存则保持不变）`
         : "密钥仅保存在后端数据库，不会回传到浏览器。";
@@ -414,7 +547,15 @@
           api_base: $("set-api-base").value,
           api_key: $("set-api-key").value,
           model: $("set-model").value,
+          web_search: $("set-web-search").checked,
+          demo_mode: $("set-demo-mode").checked,
+          review_mode: $("set-review-mode").value,
+          llm_engine: $("set-llm-engine").value,
+          thinking_level: $("set-thinking").value,
         });
+        demoMode = Boolean(s.demo_mode);
+        Modes.reviewMode = s.review_mode || "smart";
+        updateDemoBadge();
         statusEl.style.color = "#2e7d32";
         statusEl.textContent = `保存成功：${s.api_key_set ? "Key 已配置" : "Key 未配置"}`;
         $("key-hint").textContent = s.api_key_set
@@ -425,6 +566,134 @@
         statusEl.textContent = `保存失败：${err.message}`;
       }
     });
+
+    // —— 模型路由面板（云端-边缘混合降级）——
+    function engineTag(eng) {
+      if (eng === "local") return "本地 Qwen2.5-1.5B";
+      if (eng === "cloud") return "云端 DeepSeek";
+      if (eng === "none") return "不可用";
+      return "自动";
+    }
+    function badge(text, cls) {
+      return `<span class="r-badge ${cls || ""}">${text}</span>`;
+    }
+    function renderRouterStatus(data) {
+      const choice = data.engine_choice || "auto";
+      const eff = data.effective || {};
+      const local = (data.local || {});
+      const cloud = (data.cloud || {});
+      // 兼容两种接口返回结构：
+      //  /status:  cloud={..., probe:{reachable,latency_ms,status_code,error}, state,...}, local={installed,model_file,...}
+      //  /probe:   cloud={reachable,status_code,latency_ms,error, circuit:{state,...}},      local={available,latency_ms,sample}
+      const probe = cloud.probe || cloud;
+      const cloudReach = probe.reachable ?? cloud.reachable;
+      const state = cloud.state || (cloud.circuit && cloud.circuit.state) || "closed";
+      const stateCls = state === "closed" ? "ok" : (state === "open" ? "bad" : "warn");
+      // 本地就绪判定：status 用 installed，probe 用 available，统一二选一
+      const localOk = local.installed ?? local.available;
+      return `
+        <div class="r-line"><b>当前策略：</b>${badge(engineTag(choice), "sel")} 
+          <span class="r-sub">（LLM_ENGINE=${choice}）</span></div>
+        <div class="r-line"><b>判题/评估/讲师：</b>${badge(engineTag(eff.short), eff.short === "local" ? "ok" : "cloud")}
+          &nbsp;&nbsp;<b>生成剧本：</b>${badge(engineTag(eff.long), eff.long === "cloud" ? "ok" : "warn")}</div>
+        <div class="r-line"><b>本地引擎：</b>${localOk
+          ? badge("已就绪", "ok") + detailLocal(local)
+          : badge("不可用", "bad") + ` <span class="r-sub">${local.load_error || "未安装/未配置"}</span>`}</div>
+        <div class="r-line"><b>云端链路：</b>${cloudReach
+          ? badge("可达", "ok") + ` <span class="r-sub">${probe.latency_ms != null ? probe.latency_ms + "ms · " : ""}HTTP ${probe.status_code != null ? probe.status_code : "-"}</span>`
+          : badge("不可达", "bad") + ` <span class="r-sub">${probe.error || ""}</span>`}</div>
+        <div class="r-line"><b>云端熔断：</b>${badge(state, stateCls)}
+          <span class="r-sub">失败 ${cloud.consecutive_failures != null ? cloud.consecutive_failures : "-"}/${cloud.threshold != null ? cloud.threshold : "-"} · 累计降级 ${cloud.degrade_count != null ? cloud.degrade_count : "-"} · 回切 ${cloud.recovery_count != null ? cloud.recovery_count : "-"}</span></div>
+        <div class="r-sub">路由策略：${routeDesc()}</div>`;
+      // 本地探测结果里没有 model_file/load_seconds 时，给出最小可读信息
+      function detailLocal(l) {
+        if (l.model_file) {
+          return ` <span class="r-sub">${l.model_file} · ${l.model_size_mb != null ? l.model_size_mb + "MB" : ""} · 加载 ${l.load_seconds != null ? l.load_seconds + "s" : "?"}${l.load_error ? " · " + l.load_error : ""}</span>`;
+        }
+        if (l.latency_ms != null) {
+          return ` <span class="r-sub">本地加载成功 · 实测首字 ${l.latency_ms}ms</span>`;
+        }
+        return "";
+      }
+      // 路由策略说明：短任务=判题+讲师讲解，长任务=生成剧本，各自标注当前引擎链
+      function routeDesc() {
+        const pol = data.policy || null;
+        const shortChain = (pol && pol.short_order && pol.short_order.length)
+          ? pol.short_order : (eff.short ? [eff.short] : []);
+        const longChain = (pol && pol.long_order && pol.long_order.length)
+          ? pol.long_order : (eff.long ? [eff.long] : []);
+        const chain = (arr) => (arr && arr.length ? arr.map((e) => (e === "local" ? "本地" : e === "cloud" ? "云端" : engineTag(e))).join(" → ") : "（不可用）");
+        return `短任务（判题 · 讲师讲解）→ ${chain(shortChain)} ｜ 长任务（生成剧本）→ ${chain(longChain)}`;
+      }
+    }
+
+    function bindRouterPanel() {
+      $("btn-router-status").addEventListener("click", async () => {
+        const el = $("router-status");
+        el.innerHTML = "加载中…";
+        try {
+          const data = await Api.llmStatus();
+          el.innerHTML = renderRouterStatus(data);
+        } catch (err) {
+          el.innerHTML = `<span class="r-badge bad">状态读取失败</span> ${err.message}`;
+        }
+      });
+
+      $("btn-router-probe").addEventListener("click", async () => {
+        const el = $("router-status");
+        el.innerHTML = "正在探测本地加载 + 云端链路…（首次加载模型约数秒）";
+        try {
+          const data = await Api.llmProbe();
+          el.innerHTML = renderRouterStatus(data);
+        } catch (err) {
+          el.innerHTML = `<span class="r-badge bad">探测失败</span> ${err.message}`;
+        }
+      });
+
+      $("btn-router-test").addEventListener("click", async () => {
+        const el = $("router-test-out");
+        el.innerHTML = "运行中…";
+        try {
+          const r = await Api.llmTest({
+            engine: $("router-test-engine").value,
+            task: $("router-test-task").value,
+          });
+          if (!r.success) {
+            el.innerHTML = `${badge("失败", "bad")} <span class="r-sub">${r.error || "未知错误"}</span>`;
+            return;
+          }
+          el.innerHTML = `${badge(engineTag(r.engine), r.engine === "local" ? "ok" : "cloud")}
+            <span class="r-sub">任务=${r.task} · 模型=${r.model || "-"} · 耗时 ${r.latency_ms}ms${r.degraded ? " · 已降级" : ""}</span>
+            <div class="r-sample">${escapeHtml(r.text)}</div>`;
+        } catch (err) {
+          el.innerHTML = `<span class="r-badge bad">自测失败</span> ${err.message}`;
+        }
+      });
+
+      $("btn-router-bench").addEventListener("click", async () => {
+        const el = $("router-bench-out");
+        el.innerHTML = "正在运行判题基准测试（本地 + 云端，可能需要数十秒）…";
+        try {
+          const r = await Api.llmBench({ engines: "local,cloud", limit: 0 });
+          const engKeys = Object.keys(r.engines || {});
+          const rows = engKeys.map((k) => {
+            const e = r.engines[k];
+            return `<tr><td>${engineTag(k)}</td><td>${e.model}</td>
+              <td>${e.accuracy}%</td><td>${e.recall_on_correct}%</td><td>${e.specificity_on_wrong}%</td>
+              <td>${e.avg_latency_ms}ms</td><td>${e.p50_latency_ms}ms</td><td>${e.p95_latency_ms}ms</td></tr>`;
+          }).join("");
+          const agree = r.agreement == null ? "—" : r.agreement + "%";
+          el.innerHTML = `
+            <div class="r-sub">${escapeHtml(r.note)} 本地与云端一致率：<b>${agree}</b></div>
+            <table class="r-table">
+              <thead><tr><th>引擎</th><th>模型</th><th>准确率</th><th>召回(对)</th><th>特异(错)</th><th>均值延迟</th><th>P50</th><th>P95</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>`;
+        } catch (err) {
+          el.innerHTML = `<span class="r-badge bad">基准测试失败</span> ${err.message}`;
+        }
+      });
+    }
 
     // —— 需求2：全局字体大小调节 ——
     // 注意：applyFontSize 内部直接 $() 取元素，不依赖外部 const 变量，
@@ -457,6 +726,11 @@
       applyFontSize();
       Render.toast("已恢复默认字体 16px");
     });
+
+    // 模型路由面板绑定（bindRouterPanel 是本函数内的局部函数，
+    // 不能在 DOMContentLoaded 顶层直接调用，否则 ReferenceError 中断绑定链，
+    // 导致其后 bindPlayer 等永不执行——须在此函数作用域内调用）。
+    bindRouterPanel();
   }
 
   /* ────────── 播放器控制 ────────── */
@@ -488,10 +762,8 @@
       Streaming.advance();
     });
 
-    // 保存（打开存档选择槽位）
-    $("btn-save").addEventListener("click", () => openSlotModal("save"));
-    // 读取（打开存档选择槽位）
-    $("btn-load").addEventListener("click", () => openSlotModal("load"));
+    // 存档管理（保存 + 读取合一的统一面板：顶部保存当前剧本进度，下方读取全部存档）
+    $("btn-archive").addEventListener("click", () => openArchiveModal({ currentScriptId: Modes.scriptId }));
 
     // 主菜单「读取存档」弹窗关闭
     $("btn-archive-close").addEventListener("click", () => {
@@ -534,14 +806,6 @@
       }
     });
 
-    // 「编辑剧本」播放器按钮：打开当前剧本的编辑弹窗（暂停状态编辑）
-    $("btn-edit-script").addEventListener("click", () => {
-      if (!Modes.scriptId) {
-        Render.toast("尚未进入学习，请先选择资料进入播放器。");
-        return;
-      }
-      openEditScript(Modes.scriptId);
-    });
     // 编辑弹窗：取消 / 保存
     $("btn-edit-cancel").addEventListener("click", () => {
       $("modal-edit-script").classList.add("hidden");
@@ -571,11 +835,7 @@
       showScreen("screen-menu");
     });
 
-    // 占位按钮：快进（点击提示开发中）
-    // 注意：btn-history 已由 history.js 实装（打开历史面板），不在此占位列表内。
-    ["btn-fastskip"].forEach((id) => {
-      $(id).addEventListener("click", () => Render.toast("该功能开发中，敬请期待。"));
-    });
+    // 注意：btn-history 已由 history.js 实装（打开历史面板），不在此绑定。
 
     // 存档弹窗关闭
     $("modal-slots-close").addEventListener("click", () => Render.hideSlots());
@@ -610,13 +870,101 @@
     }
   }
 
+  /* ────────── 存档管理（播放器内「存档」按钮：保存 + 读取合一）────────── */
+  async function openSaveLoadManage() {
+    if (!Modes.scriptId) {
+      Render.toast("尚未进入学习，请先选择资料生成剧本。");
+      return;
+    }
+    $("modal-slots-title").textContent = "存档管理";
+    const grid = $("slot-grid");
+    grid.classList.add("slot-manage");
+    grid.innerHTML = "";
+    let data;
+    try {
+      data = await Api.listSlots(Modes.scriptId);
+    } catch (err) {
+      Render.toast(`读取存档列表失败：${err.message}`);
+      return;
+    }
+    const slots = data.slots || [];
+
+    const closeModal = () => Render.hideSlots();
+    const saveTo = async (slot, label) => {
+      try {
+        await Api.saveProgress(Modes.scriptId, Modes.chapterIndex, Modes.stepIndex, slot);
+        Render.toast(`已保存：${label}`);
+        openSaveLoadManage();          // 刷新面板，让刚存的槽变成可读状态
+      } catch (err) {
+        Render.toast(`保存失败：${err.message}`);
+      }
+    };
+    const loadFrom = (hit) => {
+      closeModal();
+      Streaming.loadScript(Modes.scriptId, hit.chapter_index, hit.step_index)
+        .catch((e) => Render.toast(`加载存档失败：${e.message}`));
+    };
+
+    for (let i = 0; i <= 9; i++) {
+      const cell = document.createElement("div");
+      const hit = slots.find((s) => s.slot === i);
+      cell.className = "slot-cell";
+      if (hit) {
+        // 已占用：整格点击 = 读取；右上小按钮 = 覆盖保存当前进度到该档
+        cell.classList.add("slot-occupied");
+        cell.innerHTML =
+          `<div class="slot-name">${i === 0 ? "⭐ 自动存档" : `手动存档 ${i}`}</div>` +
+          `<div class="slot-info">第 ${hit.chapter_index + 1} 章 · 步 ${hit.step_index + 1}</div>` +
+          `<div class="slot-time">${formatDateTimeShort(hit.updated_at)}</div>` +
+          `<button class="slot-overwrite" data-slot="${i}">覆盖保存</button>`;
+        cell.addEventListener("click", () => loadFrom(hit));
+        cell.querySelector(".slot-overwrite").addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (!confirm(`把当前进度覆盖保存到${i === 0 ? "自动档" : `手动档 ${i}`}？`)) return;
+          saveTo(i, i === 0 ? "自动档" : `手动档 ${i}`);
+        });
+      } else {
+        // 空位：点击 = 保存当前进度到该档
+        cell.classList.add("slot-empty");
+        cell.innerHTML =
+          `<div class="slot-name">${i === 0 ? "⭐ 自动存档" : `手动存档 ${i}`}</div>` +
+          `<div class="slot-empty-tip">空 · 点击保存当前进度</div>`;
+        cell.addEventListener("click", () => saveTo(i, i === 0 ? "自动档" : `手动档 ${i}`));
+      }
+      grid.appendChild(cell);
+    }
+    $("modal-slots").classList.remove("hidden");
+  }
+
   /* ────────── 启动 ────────── */
   document.addEventListener("DOMContentLoaded", () => {
     bindMenu();
     bindLibrary();
     bindSettings();
-    bindPlayer();
+    bindPlayer();   // 播放器控制（单击/空格推进、保存/读取等）；必须在 bindRouterPanel 已并入 bindSettings 之后执行
     window.Lecture && Lecture.bind();   // 讲师一对一辅导入口绑定
+    loadSettingsBadge();   // 读演示模式开关，刷新角标
     showScreen("screen-menu");
   });
+
+  // 退出登录时复位当前屏本地的选中/生成态（防止残留上一账号数据）
+  function resetSession() {
+    selectedDocId = null;
+    lastScriptId = null;
+    const genBtn = $("btn-generate");
+    if (genBtn) genBtn.disabled = true;
+  }
+
+  // 暴露给 login.js / wrongbook.js：登录成功刷新、切换屏幕、退出复位
+  window.App = {
+    onLogin: async () => {
+      await loadSettingsBadge();
+      const lib = document.getElementById("screen-library");
+      if (lib && lib.classList.contains("active")) {
+        await refreshDocList();
+      }
+    },
+    showScreen,
+    resetSession,
+  };
 })();

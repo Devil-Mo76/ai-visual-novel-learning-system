@@ -83,6 +83,7 @@ const Streaming = {
     Modes.isPlaying = false;
     this._syncEmotions(step);
     this._questionStep = step;
+    this._questionStartMs = Date.now();   // 行为埋点：记录弹题开始作答的时间
     Render.hideDialogBox();
 
     // 每次渲染都重置「查看答案」按钮，避免上个问题残留
@@ -147,7 +148,8 @@ const Streaming = {
     btn.classList.add(correct ? "q-choice-right" : "q-choice-wrong");
 
     // 选择题本地判定后同样上报后端落库（学习报告 / 错题本的数据源）。
-    // 选择题无需等 AI 判题，异步上报即可，不阻塞反馈展示。
+    // 选择题无需等 AI 判题，异步上报即可，不阻塞反馈展示；
+    // 复习（只看错题）模式答对时带 retested=true，把该题历史错题标记为已复练。
     if (Modes.scriptId != null) {
       Api.verifyAnswer({
         script_id: Modes.scriptId,
@@ -156,6 +158,8 @@ const Streaming = {
         quiz_type: "choice",
         picked_index: picked,
         quote: "",
+        retested: Modes.onlyWrong,
+        time_cost: this._questionStartMs ? Math.max(0, Date.now() - this._questionStartMs) : 0,
       }).catch((err) => {
         // 上报失败不静默吞掉：提示用户，避免「以为记了学习报告其实没记」。
         // 常见原因：后端未启动 / 网络中断。作答本身不影响继续播放。
@@ -198,6 +202,8 @@ const Streaming = {
         step_index: Modes.stepIndex,
         quiz_type: quizType,
         quote: text,
+        retested: Modes.onlyWrong,  // 复习（只看错题）模式答对 → 标记历史错题为已复练
+        time_cost: this._questionStartMs ? Math.max(0, Date.now() - this._questionStartMs) : 0,
       });
     } catch (err) {
       Render.el.qSubmit().disabled = false;
@@ -214,13 +220,13 @@ const Streaming = {
     if (correct) {
       sessionStorage.removeItem(this._attemptKey);   // 答对清零
       Render.el.qSubmit().disabled = true;
-      this._finishAnswer(true, step, correctLabel, result.explain, text);
+      this._finishAnswer(true, step, correctLabel, result.explain, text, result.engine);
       return;
     }
 
     // —— 答错（仅填空/简答有重试；选择题下方 _answer 已有锁定逻辑）——
     if (quizType === "choice") {
-      this._finishAnswer(false, step, correctLabel, result.explain, text);
+      this._finishAnswer(false, step, correctLabel, result.explain, text, result.engine);
       return;
     }
     const attempts = Number(sessionStorage.getItem(this._attemptKey) || 0) + 1;
@@ -258,7 +264,7 @@ const Streaming = {
   },
 
   /* —— 判题收尾：显示表情 + 讲评 —— */
-  _finishAnswer(correct, step, correctLabel, explain, userAnswer = "") {
+  _finishAnswer(correct, step, correctLabel, explain, userAnswer = "", engine = "") {
     const fbRole = "teacher";
     const fbEmo = correct ? "gaoxing" : "yansu";   // 需求4：答错 → 老师严肃
     Render.setSprite(fbRole, fbEmo);
@@ -275,7 +281,7 @@ const Streaming = {
       });
     }
 
-    Render.showQuestionFeedback(correct, explain || step.explain || "（未提供讲评）", correctLabel);
+    Render.showQuestionFeedback(correct, explain || step.explain || "（未提供讲评）", correctLabel, engine);
     this._saveProgress(Modes.chapterIndex, Modes.stepIndex);
   },
 
@@ -322,12 +328,34 @@ const Streaming = {
     }
   },
 
+  /* —— 快进：跳过本章剩余台词，直接进入下一章 —— */
+  skipChapter() {
+    if (!Modes.currentScript || Modes.pausedForQuestion) return;
+    Typing.cancel();
+    this._clearAutoTimer();
+    const next = Modes.chapterIndex + 1;
+    if (next < Modes.currentScript.chapters.length) {
+      this._applyChapter(next, true);
+      this._saveProgress(next, 0);
+      this.playCurrent();
+      Render.toast(`已快进到第 ${next + 1} 章`);
+    } else {
+      this._finishScript();
+    }
+  },
+
   /* —— 只看错题模式 —— */
   // 拉取错题列表并建立「已错 step 键集合」用于快速判断
   async _loadWrongQuestions() {
     if (!Modes.scriptId) return false;
     try {
       Modes.wrongQuestions = await Api.wrongQuestions(Modes.scriptId);
+      // 智能复习：due_now（今日该复习）优先，其次错得多优先；naive（普通复习）保持章节顺序做对照
+      if (Modes.reviewMode !== "naive") {
+        Modes.wrongQuestions.sort(
+          (a, b) => (b.due_now ? 1 : 0) - (a.due_now ? 1 : 0) || (b.wrong_count || 1) - (a.wrong_count || 1)
+        );
+      }
     } catch {
       Modes.wrongQuestions = [];
     }
@@ -344,36 +372,28 @@ const Streaming = {
     return this._wrongKeys && this._wrongKeys.has(`${chIndex}:${stepIndex}`);
   },
 
-  // 从 (chIndex, stepIndex) 开始向前找下一道错题并播放其所在章节
+  // 从 (chIndex, stepIndex) 开始向前找下一道错题并播放其所在章节。
+  // 按 Modes.wrongQuestions 的排序（遗忘曲线 due_now 优先）顺序取目标，
+  // 保证「今日该复习」的错题先被复习。
   _advanceToNextWrong(chIndex, stepIndex) {
     const chapters = Modes.currentScript && Modes.currentScript.chapters;
     if (!chapters || !this._wrongKeys) {
       this._finishScript();
       return;
     }
-    // 优先在当前章节内向后找
-    const ch = chapters[chIndex];
-    if (ch) {
-      for (let s = stepIndex + 1; s < ch.steps.length; s++) {
-        if (this._wrongKeys.has(`${chIndex}:${s}`)) {
-          Modes.stepIndex = s;
-          this._applyChapter(chIndex, false);
-          this.playCurrent();
-          return;
-        }
-      }
-    }
-    // 当前章找不到，向后查后续章节
-    for (let c = chIndex + 1; c < chapters.length; c++) {
-      const steps = chapters[c].steps || [];
-      for (let s = 0; s < steps.length; s++) {
-        if (this._wrongKeys.has(`${c}:${s}`)) {
-          Modes.stepIndex = s;
-          this._applyChapter(c, false);
-          this.playCurrent();
-          return;
-        }
-      }
+    for (const w of Modes.wrongQuestions) {
+      const key = `${w.chapter_index}:${w.step_index}`;
+      if (!this._wrongKeys.has(key)) continue;
+      // 从 (chIndex, stepIndex) 之后开始（chIndex<0 表示从头）
+      const isAfter =
+        chIndex < 0 ||
+        w.chapter_index > chIndex ||
+        (w.chapter_index === chIndex && w.step_index > stepIndex);
+      if (!isAfter) continue;
+      Modes.stepIndex = w.step_index;
+      this._applyChapter(w.chapter_index, false);
+      this.playCurrent();
+      return;
     }
     // 全部遍历完仍无错题：结束
     this._finishScript();
@@ -398,6 +418,25 @@ const Streaming = {
       return;
     }
     Render.toast(`只看错题模式已开启，共 ${Modes.wrongQuestions.length} 道错题待复习。`);
+    this._advanceToNextWrong(-1, -1);
+  },
+
+  /* —— 从资料库/错题本直接进入「只看错题复习」：加载剧本并跳到第一道待复习错题 —— */
+  async playOnlyWrong(scriptId) {
+    try {
+      await this.loadScript(scriptId, 0, 0);
+    } catch (err) {
+      Render.toast(`加载剧本失败：${err.message}`);
+      return;
+    }
+    Modes.onlyWrong = true;
+    const has = await this._loadWrongQuestions();
+    if (!has) {
+      Modes.onlyWrong = false;
+      Render.toast("该剧本暂无错题，已返回完整播放。");
+      return;
+    }
+    Render.toast(`已进入只看错题复习模式，共 ${Modes.wrongQuestions.length} 道待复习。`);
     this._advanceToNextWrong(-1, -1);
   },
 

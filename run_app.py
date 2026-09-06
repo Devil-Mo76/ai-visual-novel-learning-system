@@ -12,9 +12,11 @@
 #  或直接双击 start.bat
 # ═══════════════════════════════════════════════
 
+import os
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 import webbrowser
@@ -46,6 +48,24 @@ def port_in_use(port: int) -> bool:
         return s.connect_ex(("127.0.0.1", port)) == 0
 
 
+def _forward_output(proc: subprocess.Popen, tag: str) -> None:
+    """把子进程的 stdout+stderr 逐行实时转发到终端，并加标签前缀。
+
+    用并发线程持续 readline，保证进程运行时日志实时可见；
+    启动报错（如 uvicorn import 失败）也第一时间打到终端，便于排查。
+    """
+    def _pump() -> None:
+        for raw in iter(proc.stdout.readline, b""):
+            try:
+                text = raw.decode("utf-8", errors="replace").rstrip()
+            except Exception:
+                text = str(raw).rstrip()
+            if text:
+                print(f"[{tag}] {text}", flush=True)
+
+    threading.Thread(target=_pump, daemon=True).start()
+
+
 def find_free_port(prefer: int) -> int:
     """优先用 prefer，被占用则从 8001 起找一个空闲端口。"""
     if not port_in_use(prefer):
@@ -64,7 +84,7 @@ def backend_healthy(port: int) -> bool:
         return False
 
 
-# ── 拉起后端 uvicorn ──
+# ── 拉起后端 uvicorn（输出并入实时转发到终端）──
 def start_backend(port: int):
     cmd = [
         sys.executable, "-m", "uvicorn",
@@ -72,15 +92,35 @@ def start_backend(port: int):
         "--host", "127.0.0.1",
         "--port", str(port),
     ]
-    return subprocess.Popen(cmd, cwd=str(FRONTEND_DIR))
+    # 强制子进程以 UTF-8 输出 stdout/stderr，配合终端 chcp 65001 避免中文乱码
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(FRONTEND_DIR),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,   # 合并 stderr，统一经转发显示
+        env=env,
+    )
+    _forward_output(proc, "后端")
+    return proc
 
 
-# ── 拉起前端静态服务 ──
+# ── 拉起前端静态服务（输出并入实时转发到终端）──
 def start_frontend(port: int):
-    return subprocess.Popen(
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+    proc = subprocess.Popen(
         [sys.executable, "-m", "http.server", str(port)],
         cwd=str(FRONTEND_DIR),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
     )
+    _forward_output(proc, "前端")
+    return proc
 
 
 def main() -> None:

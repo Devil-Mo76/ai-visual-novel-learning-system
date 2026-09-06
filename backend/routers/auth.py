@@ -1,4 +1,4 @@
-"""用户认证路由：注册 + 登录（JWT 签发）。\]
+"""用户认证路由：注册 + 登录（JWT 签发）。
 
 - POST /api/auth/register——创建新用户（用户名唯一；密码哈希后入库）。
 - POST /api/auth/login——校验用户名/密码，签发 JWT（access_token）。

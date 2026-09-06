@@ -5,22 +5,24 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..auth import get_current_user
 from ..db import get_db
-from ..models import Document, Progress, Script
+from ..models import Document, Progress, Script, User
 from ..schemas import ArchiveOut, ProgressOut, ProgressSaveIn
 
 router = APIRouter(prefix="/api/progress", tags=["progress"])
 
 
 @router.post("/save", response_model=ProgressOut)
-def save_progress(payload: ProgressSaveIn, db: Session = Depends(get_db)):
+def save_progress(payload: ProgressSaveIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     script = db.get(Script, payload.script_id)
-    if script is None:
+    if script is None or script.user_id != user.id:
         raise HTTPException(404, "剧本不存在")
 
     # 同槽位只保留一份进度（自动槽会被每节点覆盖）
     existing = db.scalars(
         select(Progress).where(
+            Progress.user_id == user.id,
             Progress.script_id == payload.script_id,
             Progress.slot == payload.slot,
         )
@@ -31,6 +33,7 @@ def save_progress(payload: ProgressSaveIn, db: Session = Depends(get_db)):
         row = existing
     else:
         row = Progress(
+            user_id=user.id,
             script_id=payload.script_id,
             slot=payload.slot,
             chapter_index=payload.chapter_index,
@@ -43,10 +46,13 @@ def save_progress(payload: ProgressSaveIn, db: Session = Depends(get_db)):
 
 
 @router.get("/latest")
-def latest_progress(db: Session = Depends(get_db)):
+def latest_progress(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """最近一次更新进度的信息，供「继续学习」直接跳转。"""
     row = db.scalars(
-        select(Progress).order_by(Progress.updated_at.desc(), Progress.id.desc()).limit(1)
+        select(Progress)
+        .where(Progress.user_id == user.id)
+        .order_by(Progress.updated_at.desc(), Progress.id.desc())
+        .limit(1)
     ).first()
     if row is None:
         return {"exists": False}
@@ -64,19 +70,23 @@ def latest_progress(db: Session = Depends(get_db)):
 
 
 @router.get("/slots/{script_id}")
-def list_slots(script_id: int, db: Session = Depends(get_db)):
+def list_slots(script_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """给定剧本的全部存档槽位（主槽0 + 手动槽1-9）。"""
     rows = db.scalars(
-        select(Progress).where(Progress.script_id == script_id).order_by(Progress.slot)
+        select(Progress).where(Progress.user_id == user.id, Progress.script_id == script_id).order_by(Progress.slot)
     ).all()
     return {"script_id": script_id, "slots": [_to_out(r) for r in rows]}
 
 
 @router.get("/list", response_model=list[ArchiveOut])
-def list_archive(db: Session = Depends(get_db)):
+def list_archive(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """全部存档（含用户导入的资料名），供主菜单「读取存档」使用。
     每行存档标注其剧本关联文档（学习资料）的名称。"""
-    rows = db.scalars(select(Progress).order_by(Progress.updated_at.desc(), Progress.id.desc())).all()
+    rows = db.scalars(
+        select(Progress)
+        .where(Progress.user_id == user.id)
+        .order_by(Progress.updated_at.desc(), Progress.id.desc())
+    ).all()
     out = []
     for r in rows:
         script = db.get(Script, r.script_id)
@@ -96,10 +106,11 @@ def list_archive(db: Session = Depends(get_db)):
 
 
 @router.delete("/{script_id}/{slot}")
-def delete_progress(script_id: int, slot: int, db: Session = Depends(get_db)):
+def delete_progress(script_id: int, slot: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """删除某个剧本的指定存档槽（slot=0 自动档，1-9 手动档）。返回受影响的记录数。"""
     deleted = db.scalars(
         select(Progress).where(
+            Progress.user_id == user.id,
             Progress.script_id == script_id,
             Progress.slot == slot,
         )
@@ -111,10 +122,10 @@ def delete_progress(script_id: int, slot: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{script_id}", response_model=ProgressOut)
-def get_progress(script_id: int, db: Session = Depends(get_db)):
+def get_progress(script_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """读取该剧本最近一次进度（继续播放用）。"""
     row = db.scalars(
-        select(Progress).where(Progress.script_id == script_id)
+        select(Progress).where(Progress.user_id == user.id, Progress.script_id == script_id)
         .order_by(Progress.updated_at.desc(), Progress.id.desc()).limit(1)
     ).first()
     if row is None:

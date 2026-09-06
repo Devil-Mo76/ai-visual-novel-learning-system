@@ -41,6 +41,9 @@ class Document(Base):
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     title: Mapped[str] = mapped_column(String(255), default="")
     content: Mapped[str] = mapped_column(Text, default="")          # 解析后的纯文本
+    # 本地知识库：file_path 记录上传原始文件在 uploads/ 下的相对路径；chunk_count 记录知识库切块数
+    file_path: Mapped[str] = mapped_column(String(512), default="")
+    chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     scripts: Mapped[list["Script"]] = relationship(
@@ -64,6 +67,9 @@ class Script(Base):
     # —— 学习目标匹配度校验（生成后置的轻量 AI 评分）——
     goal_score: Mapped[int | None] = mapped_column(Integer, nullable=True)   # 0-100 匹配度得分
     goal_comment: Mapped[str] = mapped_column(Text, default="")              # 评估评语
+    # —— 生成质量自动评估（每章考点覆盖 / 章节粒度 / 背景轮换 / 台词口语化）——
+    quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0-100 质量分
+    quality_comment: Mapped[str] = mapped_column(Text, default="")            # 质量评语/问题列表
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=_now, onupdate=_now        # 人机协同手动更新时自动刷新
@@ -92,9 +98,17 @@ class Settings(Base):
     __tablename__ = "settings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)  # 单行
-    api_base: Mapped[str] = mapped_column(String(255), default="https://api.siliconflow.cn/v1")
+    api_base: Mapped[str] = mapped_column(String(255), default="https://api.deepseek.com")
     api_key: Mapped[str] = mapped_column(String(255), default="")          # 只落后端
-    model: Mapped[str] = mapped_column(String(100), default="deepseek-ai/DeepSeek-V3")
+    model: Mapped[str] = mapped_column(String(100), default="deepseek-chat")
+    web_search: Mapped[bool] = mapped_column(Boolean, default=True)        # 讲师联网搜索开关
+    demo_mode: Mapped[bool] = mapped_column(Boolean, default=False)        # 演示模式：无 AI 也能跑样例数据
+    review_mode: Mapped[str] = mapped_column(String(16), default="smart")  # smart=智能复习 / naive=普通复习（实验对照）
+    # 模型路由策略：auto（短任务本地优先/长任务云端优先）| local（强制本地）| cloud（强制云端）
+    # 数据库值优先；未设置时回落到 .env 的 LLM_ENGINE。
+    llm_engine: Mapped[str] = mapped_column(String(16), default="auto")
+    # 思考强度（DeepSeek V4 thinking）：high / medium / low
+    thinking_level: Mapped[str] = mapped_column(String(16), default="high")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
 
@@ -114,6 +128,9 @@ class Analytics(Base):
     step_index: Mapped[int] = mapped_column(Integer, default=0)
     quiz_type: Mapped[str] = mapped_column(String(16), default="choice")
     is_correct: Mapped[bool] = mapped_column(Boolean, default=False)
+    retested: Mapped[bool] = mapped_column(Boolean, default=False)  # 错题已被「只看错题/错题本」复习答对，保留历史
+    retested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # 上次成功复练时间（遗忘曲线）
+    review_count: Mapped[int] = mapped_column(Integer, default=0)   # 成功复练次数（遗忘曲线复习阶段）
     attempts: Mapped[int] = mapped_column(Integer, default=1)      # 第几次作答
     time_cost: Mapped[int] = mapped_column(Integer, default=0)     # 作答耗时（毫秒）
     # —— 错题本回溯字段（供 /wrong_questions 直接输出，不依赖章节 JSON）——

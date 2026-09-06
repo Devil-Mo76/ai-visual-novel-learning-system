@@ -6,8 +6,7 @@
   <title>AI视觉小说互动式学习系统</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/animations.css" />
-  <!-- ECharts（本地化，离线可用）：学习报告面板的雷达图/柱状图依赖它 -->
-  <script src="vendor/echarts.min.js"></script>
+  <!-- ECharts 改为按需加载：仅在打开「学习报告」面板时才注入 vendor/echarts.min.js，避免阻塞首屏 -->
 </head>
 <body>
   <!-- ═══════════ 登录遮罩（模拟登录，启动时全屏覆盖） ═══════════ -->
@@ -19,23 +18,34 @@
       <h1 class="login-title">AI 视觉小说学习</h1>
       <p class="login-subtitle">讲述者 · 提问者 双人互动教学</p>
 
-      <label class="login-field">
-        <span class="login-label">用户名</span>
-        <input id="login-username" class="login-input" type="text" placeholder="请输入用户名" autocomplete="username" />
-      </label>
-      <label class="login-field">
-        <span class="login-label">密码</span>
-        <input id="login-password" class="login-input" type="password" placeholder="请输入密码" autocomplete="current-password" />
-      </label>
+      <form id="login-form" action="javascript:void(0)" autocomplete="on">
+        <label class="login-field">
+          <span class="login-label">用户名</span>
+          <input id="login-username" class="login-input" type="text" placeholder="请输入用户名" autocomplete="username" />
+        </label>
+        <label class="login-field">
+          <span class="login-label">密码</span>
+          <input id="login-password" class="login-input" type="password" placeholder="请输入密码" autocomplete="current-password" />
+        </label>
 
-      <button id="btn-login" class="login-btn">进入系统</button>
-      <p class="login-hint">模拟登录：任意用户名/密码均可进入</p>
+        <button id="btn-login" class="login-btn" type="submit">进入系统</button>
+      </form>
+      <p class="login-hint">已注册账号直接登录；未注册账号会自动注册（各账号学习数据互不干扰）</p>
     </div>
   </div>
 
-  <!-- ═══════════ 左上角登录用户头像 ═══════════ -->
-  <div id="user-avatar" class="user-avatar hidden" title="当前登录用户">
+  <!-- ═══════════ 左上角登录用户头像（点击弹出用户管理面板）═══════════ -->
+  <div id="user-avatar" class="user-avatar hidden" title="点击管理登录 / 退出登录">
     <img src="images/用户头像/用户头像.png" alt="用户头像" />
+  </div>
+
+  <!-- 用户管理面板：头像下拉，管理当前用户的登录与退出 -->
+  <div class="user-menu hidden" id="user-menu">
+    <div class="user-menu-header">
+      <img src="images/用户头像/用户头像.png" alt="用户头像" />
+      <span class="user-menu-name" id="user-menu-name">未登录</span>
+    </div>
+    <button class="user-menu-item" id="btn-user-logout" title="退出登录并回到登录界面">退出登录</button>
   </div>
 
   <!-- ═══════════ 主菜单屏 ═══════════ -->
@@ -78,7 +88,7 @@
       <!-- 资料列表 + 生成区 -->
       <div class="library-card">
         <div class="library-title">现有学习资料</div>
-        <div class="library-subtitle">点击选中资料 → 设置章节数 → 生成剧本</div>
+        <div class="library-subtitle">点击选中资料 → 生成剧本（章节将按资料的主题考点自动划分，覆盖全部知识点）</div>
         <ul id="doc-list" class="doc-list"></ul>
         <div class="goal-box">
           <label class="gen-label" for="learning-goal">学习背景说明</label>
@@ -87,17 +97,10 @@
           <span class="goal-hint">此说明仅作为上下文增强讲解针对性，不会改变剧本生成规则。</span>
         </div>
         <div class="doc-generate-bar">
-          <label class="gen-label" for="chapter-count">章节数</label>
-          <select id="chapter-count" class="gen-select">
-            <option value="5">5 章</option>
-            <option value="8">8 章</option>
-            <option value="10">10 章</option>
-            <option value="12">12 章</option>
-            <option value="15">15 章</option>
-            <option value="20">20 章</option>
-            <option value="30">30 章</option>
-          </select>
           <button class="btn-primary" id="btn-generate" disabled>生成教学剧本</button>
+        </div>
+        <div class="doc-generate-bar">
+          <button class="btn-ghost hidden" id="btn-load-demo" title="演示模式：一键载入样例资料并生成示例剧本，断网/无 Key 也能体验">📄 载入演示资料并生成</button>
         </div>
         <div id="gen-status"></div>
       </div>
@@ -113,20 +116,78 @@
     <!-- 自适应网格：连接/显示/弹题三组，宽屏并排、窄屏堆叠 -->
     <div class="settings-layout">
 
-      <!-- 连接设置（占满整行） -->
+      <!-- 连接设置（占满整行，内部字段自适应并排） -->
       <div class="settings-group group-conn">
         <div class="group-title">🔌 连接设置</div>
 
-        <label class="field-label" for="set-api-base">API 地址</label>
-        <input class="field-input" id="set-api-base" placeholder="https://api.siliconflow.cn/v1" />
-        <span class="field-hint">硅基流动中转站（OpenAI 兼容协议），默认即可</span>
+        <div class="settings-fields">
+          <div class="field">
+            <label class="field-label" for="set-api-base">API 地址</label>
+            <input class="field-input" id="set-api-base" placeholder="https://api.deepseek.com" />
+            <span class="field-hint">DeepSeek 官方 OpenAI 兼容地址（默认即可）。</span>
+          </div>
 
-        <label class="field-label" for="set-api-key">API Key</label>
-        <input class="field-input" id="set-api-key" type="password" placeholder="sk-…" autocomplete="off" />
-        <span class="field-hint" id="key-hint">密钥仅保存在后端数据库，不会回传到浏览器。</span>
+          <div class="field">
+            <label class="field-label" for="set-api-key">API Key</label>
+            <input class="field-input" id="set-api-key" type="password" placeholder="sk-…" autocomplete="off" />
+            <span class="field-hint" id="key-hint">密钥仅保存在后端数据库，不会回传到浏览器。</span>
+          </div>
 
-        <label class="field-label" for="set-model">模型名称</label>
-        <input class="field-input" id="set-model" placeholder="deepseek-ai/DeepSeek-V3" />
+          <div class="field">
+            <label class="field-label" for="set-model">模型名称</label>
+            <select id="set-model" class="gen-select">
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash（推荐·均衡）</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro（更强·更慢）</option>
+              <option value="deepseek-v4-flash-vision-exp">DeepSeek V4 Flash Vision（多模态实验）</option>
+            </select>
+            <span class="field-hint">请选择模型，勿手填显示名（如「DeepSeek V4 Flash」会导致 400 错误）。</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="set-thinking">思考强度</label>
+            <select id="set-thinking" class="gen-select">
+              <option value="high">高（深度推理，耗时更长）</option>
+              <option value="medium">中（推荐）</option>
+              <option value="low">低（最快）</option>
+            </select>
+            <span class="field-hint">对应 DeepSeek V4 的 reasoning_effort：high / medium / low。</span>
+          </div>
+
+          <div class="field">
+            <label class="quiz-check">
+              <input type="checkbox" id="set-web-search" />
+              讲师联网搜索
+            </label>
+            <span class="field-hint">讲师可依据联网检索的摘要补充讲解（DuckDuckGo，无结果自动退回资料）。</span>
+          </div>
+
+          <div class="field">
+            <label class="quiz-check">
+              <input type="checkbox" id="set-demo-mode" />
+              演示模式（离线样例）
+            </label>
+            <span class="field-hint">不调 AI，生成/判题/讲师用内置样例；答辩断网演示建议打开。</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="set-review-mode">复习模式（实验对照）</label>
+            <select id="set-review-mode" class="gen-select">
+              <option value="smart">智能复习（掌握度 + 遗忘曲线优先）</option>
+              <option value="naive">普通复习（按章节顺序，作对照）</option>
+            </select>
+            <span class="field-hint">可分组对比两种复习模式的学习保留效果，支撑论文实验。</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="set-llm-engine">模型路由策略（云端-边缘混合）</label>
+            <select id="set-llm-engine" class="gen-select">
+              <option value="auto">自动（短任务本地 / 长任务云端，推荐）</option>
+              <option value="local">本地优先（强制 Qwen2.5-1.5B 离线）</option>
+              <option value="cloud">云端优先（强制 DeepSeek，追求生成质量）</option>
+            </select>
+            <span class="field-hint">本地离线零流量；云端质量更高；网络中断自动降级本地，恢复自动回切。</span>
+          </div>
+        </div>
 
         <div class="settings-actions">
           <button class="btn-primary" id="btn-test">API 连接测试</button>
@@ -162,6 +223,45 @@
           <span class="field-hint">勾选后，下次生成剧本时会按所选类型自动加入对应题目。</span>
         </div>
       </div>
+
+      <!-- 模型路由（云端-边缘混合降级） -->
+      <div class="settings-group group-router">
+        <div class="group-title">🛰 模型路由（云端-边缘混合降级）</div>
+        <span class="field-hint">边缘（本地 Qwen2.5-1.5B）离线判题、云端 DeepSeek 生成剧本；网络中断自动降级到本地，恢复后自动回切。下方可实时观察路由状态与实测指标。</span>
+
+        <div class="router-actions">
+          <button class="btn-primary" id="btn-router-status">刷新状态</button>
+          <button class="btn-primary" id="btn-router-probe">探测两引擎</button>
+        </div>
+
+        <div class="router-status" id="router-status">点击「刷新状态」查看当前路由策略与引擎可用性。</div>
+
+        <div class="router-test">
+          <label class="field-label">单次连通自测</label>
+          <div class="router-test-row">
+            <select id="router-test-engine" class="gen-select gen-select-sm">
+              <option value="auto">自动</option>
+              <option value="local">本地</option>
+              <option value="cloud">云端</option>
+            </select>
+            <select id="router-test-task" class="gen-select gen-select-sm">
+              <option value="short">短任务（判题）</option>
+              <option value="long">长任务（生成）</option>
+            </select>
+            <button class="btn-primary" id="btn-router-test">测一下</button>
+          </div>
+          <div class="router-test-out" id="router-test-out"></div>
+        </div>
+
+        <div class="router-bench">
+          <label class="field-label">判题基准测试（本地 vs 云端同题对比）</label>
+          <span class="field-hint">用同一批题目分别交给本地与云端判题，产出准确率、延迟与两者一致率——这就是论文「按任务给真实指标」的数据来源。</span>
+          <div class="router-actions">
+            <button class="btn-primary" id="btn-router-bench">运行基准测试</button>
+          </div>
+          <div class="router-bench-out" id="router-bench-out"></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -184,41 +284,34 @@
       <div class="dialog-text" id="dialog-text"></div>
 
       <!-- 讲师一对一辅导会话区：复用底部对话栏（进入讲师模式时显示，
-           与讲述者/提问者共用同一条对话栏，多轮记录 + 输入框） -->
+           与讲述者/提问者共用同一条对话栏；讲师说话显示在 dialog-text 同一位，
+           仅在此底部加一行输入 + 精简工具栏 + 历史折叠） -->
       <div class="lecture-session hidden" id="lecture-session">
-        <div class="lecture-header">
-          <span class="lecture-title">📖 讲师一对一辅导</span>
-          <button class="btn-ghost" id="btn-lecture-history" title="查看过往的讲师问答记录">📜 历史记录</button>
-          <button class="btn-ghost" id="btn-lecture-close-top" title="结束一对一辅导，返回双人学习">✕ 关闭</button>
-        </div>
-        <div class="lecture-history hidden" id="lecture-history">
-          <div class="lecture-history-title">📚 过往问答记录（只读）</div>
-          <div class="lecture-history-bubbles" id="lecture-history-bubbles"></div>
-        </div>
-        <div class="lecture-chat" id="lecture-chat"></div>
         <div class="lecture-input-row">
-          <textarea id="lecture-input" class="q-input" rows="2" placeholder="输入你想深入了解的地方，讲师会一对一为你讲解…"></textarea>
+          <textarea id="lecture-input" class="q-input" rows="1" placeholder="输入你想了解的问题…"></textarea>
           <button class="btn-primary" id="btn-lecture-send">提问</button>
-        </div>
-        <div class="lecture-toolbar">
-          <button class="btn-back" id="btn-lecture-close">返回学习</button>
+          <button class="btn-ghost" id="btn-lecture-close" title="结束一对一辅导，返回双人学习">返回学习</button>
         </div>
       </div>
     </div>
 
-    <!-- 底部功能栏 -->
+    <!-- 底部功能栏（分组：播放控制 / 内容工具 / 视图，突出常用） -->
     <div class="control-bar">
-      <button class="ctl-btn" id="btn-save">保存</button>
-      <button class="ctl-btn" id="btn-load">读取</button>
-      <button class="ctl-btn" id="btn-return-menu">返回主菜单</button>
+      <div class="control-group control-primary">
+        <button class="ctl-btn" id="btn-auto">自动</button>
+        <button class="ctl-btn" id="btn-only-wrong" title="只看错题：仅播放你之前答错的题目所在章节，针对性复习">只看错题</button>
+        <button class="ctl-btn" id="btn-return-menu">返回主菜单</button>
+      </div>
       <span class="ctl-sep"></span>
-      <button class="ctl-btn" id="btn-history" title="查看对话历史与测验历史">历史记录</button>
-      <button class="ctl-btn" id="btn-edit-script" title="编辑当前剧本内容（标题/背景/台词/题目选项与答案）">✏ 编辑剧本</button>
-      <button class="ctl-btn" id="btn-settings-player">设置</button>
-      <button class="ctl-btn ctl-placeholder" id="btn-fastskip" title="开发中">快进</button>
-      <button class="ctl-btn" id="btn-only-wrong" title="只看错题：仅播放你之前答错的题目所在章节，针对性复习">只看错题</button>
-      <button class="ctl-btn" id="btn-auto">自动</button>
-      <button class="ctl-btn" id="btn-hide-dialog">隐藏对话栏</button>
+      <div class="control-group control-tools">
+        <button class="ctl-btn" id="btn-archive" title="存档管理：保存当前进度到空位，或读取/覆盖已有存档">存档</button>
+        <button class="ctl-btn" id="btn-history" title="查看对话历史与测验历史">历史记录</button>
+      </div>
+      <span class="ctl-sep"></span>
+      <div class="control-group control-view">
+        <button class="ctl-btn" id="btn-settings-player">设置</button>
+        <button class="ctl-btn" id="btn-hide-dialog">隐藏对话栏</button>
+      </div>
     </div>
     <!-- 底部操作小字提示（需求四：快捷键引导） -->
     <div class="control-hint">空格键 / 鼠标左键 → 推进对话</div>
@@ -228,6 +321,9 @@
 
     <!-- 讲师入口：主界面右侧悬浮按钮（需求：用户单击召唤讲师一对一辅导） -->
     <button class="lecture-fab" id="btn-lecture-fab" title="召唤讲师一对一深入讲解当前知识点">📖 讲师</button>
+
+    <!-- 错题本入口：播放器右侧悬浮按钮（独立面板，浏览全部待复练错题） -->
+    <button class="wrongbook-fab" id="btn-wrongbook-fab" title="打开错题本：查看并复习所有待复练错题">📕 错题本</button>
 
     <!-- 弹题框 -->
     <div class="question-box hidden" id="question-box">
@@ -257,6 +353,9 @@
     </div>
   </section>
 
+  <!-- 演示模式角标（P1：离线演示时提示当前为样例数据） -->
+  <div id="demo-badge" class="demo-badge hidden">演示模式</div>
+
   <!-- 全局轻提示 -->
   <div id="toast" class="toast"></div>
 
@@ -272,11 +371,18 @@
     </div>
   </div>
 
-  <!-- 主菜单：读取存档列表弹窗（每档标注学习资料名） -->
+  <!-- 存档（主界面读取 / 游戏内保存+读取 统一面板，每档标注学习资料名） -->
   <div class="modal hidden" id="modal-archive">
-    <div class="modal-card">
-      <div class="modal-title">读取存档</div>
-      <div class="modal-desc">选择一份存档继续学习，每个存档标注了对应的学习资料。</div>
+    <div class="modal-card modal-archive-card">
+      <div class="modal-title" id="archive-title">存档</div>
+
+      <!-- 游戏内：保存当前进度区（当前剧本空槽；主界面无当前剧本则隐藏） -->
+      <div id="archive-save-area" class="archive-save-area hidden">
+        <div class="archive-section-hint">💾 保存当前进度（点空位保存到该档）</div>
+        <div class="slot-grid slot-save" id="archive-save-grid"></div>
+      </div>
+
+      <div class="archive-section-hint">📚 读取存档（点击任意一条进入对应资料）</div>
       <div class="archive-list" id="archive-list"></div>
       <button class="btn-primary" id="btn-archive-close">关闭</button>
     </div>
@@ -316,10 +422,10 @@
         <div class="stat-tile"><div class="stat-num" id="stat-rate">0%</div><div class="stat-label">总体正确率</div></div>
       </div>
 
-      <!-- 雷达图 -->
+      <!-- 知识点掌握程度（横向，全部知识点按掌握度排序） -->
       <div class="report-chart-wrap">
-        <div class="report-chart-title">🔁 知识点维度掌握度（按章节标题）</div>
-        <div id="report-radar" class="report-echart"></div>
+        <div class="report-chart-title">🧭 知识点掌握程度（全部知识点，按掌握度排序）</div>
+        <div id="report-mastery" class="report-echart"></div>
       </div>
 
       <!-- 柱状图 -->
@@ -334,9 +440,45 @@
         <div id="report-tree" class="report-echart report-tree"></div>
       </div>
 
+      <!-- 作答次数时间线（按天，折线/柱状） -->
+      <div class="report-chart-wrap">
+        <div class="report-chart-title">📅 每日作答趋势（作答量 + 正确率）</div>
+        <div id="report-time" class="report-echart"></div>
+      </div>
+
+      <!-- 题型分布（按题型分类正确率） -->
+      <div class="report-chart-wrap">
+        <div class="report-chart-title">🧩 题型作答分布（选择 / 填空 / 简答）</div>
+        <div id="report-type" class="report-echart"></div>
+      </div>
+
+      <!-- 考点覆盖度（已作答章节 / 全部章节） -->
+      <div class="report-chart-wrap">
+        <div class="report-chart-title">🎯 考点覆盖度（已作答章节数 / 总章节数）</div>
+        <div id="report-coverage" class="report-echart"></div>
+      </div>
+
+      <!-- 薄弱诊断与复习建议（学情诊断 + 自适应推荐，独占整行） -->
+      <div class="report-chart-wrap diagnosis-wrap">
+        <div class="report-chart-title">🧭 薄弱诊断与复习建议（掌握度 / 前置依赖 / 自适应推荐）</div>
+        <div id="report-diagnosis" class="report-diagnosis">
+          <div style="color:var(--ink-soft);text-align:center;padding-top:20px">加载中…</div>
+        </div>
+      </div>
+
       <div class="report-empty hidden" id="report-empty">暂未检测到答题记录。先去学习并作答，学习报告会在这里汇总你的掌握情况。</div>
 
       <button class="btn-primary" id="btn-report-close">关闭</button>
+    </div>
+  </div>
+
+  <!-- 错题本面板：待复练错题列表（题目/我的答案/正确答案/讲评/错误次数），可标记已练或去复习 -->
+  <div class="modal hidden" id="wrongbook-modal">
+    <div class="modal-card wrongbook-card">
+      <div class="modal-title">📕 错题本</div>
+      <div class="modal-desc" id="wrongbook-desc">正在加载待复练错题…</div>
+      <div class="wrongbook-list" id="wrongbook-list"></div>
+      <button class="btn-primary" id="btn-wrongbook-close">关闭</button>
     </div>
   </div>
 
@@ -356,15 +498,16 @@
   </div>
 
   <script src="js/config.js?v=20260831a"></script>
-  <script src="js/api.js?v=20260831a"></script>
-  <script src="js/modes.js?v=20260831a"></script>
+  <script src="js/api.js?v=20260907a"></script>
+  <script src="js/modes.js?v=20260907a"></script>
   <script src="js/typing.js?v=20260831a"></script>
-  <script src="js/render.js?v=20260831a"></script>
-  <script src="js/streaming.js?v=20260831a"></script>
-  <script src="js/lecture.js?v=20260831a"></script>
-  <script src="js/app.js?v=20260831a"></script>
-  <script src="js/login.js?v=20260831a"></script>
+  <script src="js/render.js?v=20260904a"></script>
+  <script src="js/streaming.js?v=20260907a"></script>
+  <script src="js/lecture.js?v=20260906d"></script>
+  <script src="js/app.js?v=20260907a"></script>
+  <script src="js/login.js?v=20260906a"></script>
   <script src="js/history.js?v=20260831a"></script>
-  <script src="js/report.js?v=20260831a"></script>
+  <script src="js/report.js?v=20260907a"></script>
+  <script src="js/wrongbook.js?v=20260905b"></script>
 </body>
 </html>

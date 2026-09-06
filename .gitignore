@@ -2,12 +2,24 @@
 backend/.env
 backend/learning.db
 backend/*.db
+backend/*.db.bak_*
 backend/__pycache__/
 **/__pycache__/
+backend/logs/
+backend/logs/*.log
 
 # Node / 工具
 node_modules/
 /tmp/
+
+# 本地大模型与运行时数据（不入库）
+models/
+knowledge/
+uploads/
+
+# 工具目录 / 杂项
+.workbuddy/
+${APPDATA}/
 
 # 系统文件
 .DS_Store

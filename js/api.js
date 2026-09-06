@@ -7,10 +7,28 @@
 const Api = {
   base: API_BASE,
 
-  // 通用 fetch 封装：自动带 JSON、解析错误信息
+  // 统一附加登录 token（Authorization: Bearer <jwt>），用于多用户数据隔离
+  _token() {
+    return localStorage.getItem("vn_token") || "";
+  },
+
+  _authHeaders(existing) {
+    const headers = new Headers(existing || {});
+    const token = this._token();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    return headers;
+  },
+
+  // 通用 fetch 封装：自动带 JSON、附加 token、解析错误信息
   async _req(path, options = {}) {
-    const url = this.base + path;
-    const resp = await fetch(url, options);
+    const headers = this._authHeaders(options.headers);
+    const resp = await fetch(this.base + path, { ...options, headers });
+    if (resp.status === 401) {
+      // token 失效：清理并通知登录层重新登录
+      localStorage.removeItem("vn_token");
+      localStorage.removeItem("vn_user");
+      if (this.onAuthExpired) this.onAuthExpired();
+    }
     const data = await resp.json().catch(() => null);
     if (!resp.ok) {
       const msg = (data && data.detail) || `请求失败（HTTP ${resp.status}）`;
@@ -32,6 +50,14 @@ const Api = {
     return this._req("/api/health");
   },
 
+  // —— 认证（真实登录闭环） ——
+  login(username, password) {
+    return this._req("/api/auth/login", this._json("POST", { username, password }));
+  },
+  register(username, password) {
+    return this._req("/api/auth/register", this._json("POST", { username, password }));
+  },
+
   // —— 文档 ——
   uploadDocument(file) {
     const fd = new FormData();
@@ -48,12 +74,12 @@ const Api = {
   },
 
   // —— 剧本 ——
-  generateScript(documentId, chapterCount = 3, learningGoal = "", quizTypes = ["choice"]) {
+  // 章节数由后端按资料主题考点自动决定，前端不再手动指定
+  generateScript(documentId, learningGoal = "", quizTypes = ["choice"]) {
     return this._req(
       "/api/scripts/generate",
       this._json("POST", {
         document_id: documentId,
-        chapter_count: chapterCount,
         learning_goal: learningGoal,
         quiz_types: quizTypes,
       })
@@ -82,9 +108,23 @@ const Api = {
     return this._req(`/api/analytics/overview?script_id=${scriptId}`);
   },
 
+  // —— 学情诊断 / 自适应复习推荐 ——
+  analyticsDiagnosis(scriptId) {
+    return this._req(`/api/analytics/diagnosis?script_id=${scriptId}`);
+  },
+
   // —— 错题本（只看错题复习模式的数据源，接口第8条）——
-  wrongQuestions(scriptId) {
-    return this._req(`/api/scripts/${scriptId}/wrong_questions`);
+  // status: "pending"（默认，只看未复练）| "all"（全部，含已复练，供错题本面板）
+  wrongQuestions(scriptId, status = "pending") {
+    return this._req(`/api/scripts/${scriptId}/wrong_questions?status=${status}`);
+  },
+
+  // 错题本「标记已练」：把该题（chapter/step）的历史错题记录置 retested=true
+  retestWrong(scriptId, chapterIndex, stepIndex) {
+    return this._req(
+      `/api/scripts/${scriptId}/wrong_questions/${chapterIndex}/${stepIndex}/retest`,
+      { method: "POST" }
+    );
   },
 
   // —— 进度 ——
@@ -120,12 +160,43 @@ const Api = {
     return this._req("/api/settings");
   },
 
-  saveSettings({ api_base, api_key, model }) {
-    return this._req("/api/settings", this._json("PUT", { api_base, api_key, model }));
+  saveSettings({ api_base, api_key, model, web_search, demo_mode, review_mode, llm_engine, thinking_level }) {
+    const body = { api_base, api_key, model };
+    if (typeof web_search === "boolean") body.web_search = web_search;
+    if (typeof demo_mode === "boolean") body.demo_mode = demo_mode;
+    if (review_mode === "smart" || review_mode === "naive") body.review_mode = review_mode;
+    if (llm_engine === "auto" || llm_engine === "local" || llm_engine === "cloud") {
+      body.llm_engine = llm_engine;
+    }
+    if (thinking_level === "high" || thinking_level === "medium" || thinking_level === "low") {
+      body.thinking_level = thinking_level;
+    }
+    return this._req("/api/settings", this._json("PUT", body));
   },
 
   testSettings(payload) {
     return this._req("/api/settings/test", this._json("POST", payload));
+  },
+
+  // —— 模型路由（云端-边缘混合降级）——
+  llmStatus() {
+    return this._req("/api/llm/status");
+  },
+
+  llmProbe() {
+    return this._req("/api/llm/probe", this._json("POST", {}));
+  },
+
+  llmSetEngine(engine) {
+    return this._req("/api/llm/engine", this._json("POST", { engine }));
+  },
+
+  llmTest({ engine = "auto", task = "short", prompt = "请用一句话说明什么是进程。" } = {}) {
+    return this._req("/api/llm/test", this._json("POST", { engine, task, prompt }));
+  },
+
+  llmBench({ engines = "local,cloud", limit = 0 } = {}) {
+    return this._req("/api/llm/bench", this._json("POST", { engines, limit }));
   },
 
   // —— 讲师一对一辅导（SSE 流式）——
@@ -149,7 +220,9 @@ const Api = {
 
   // 通用 SSE 读取器：POST JSON → 逐「data: 」行解析 → 回调 onEvent(对象) → [DONE] resolve。
   async _sse(path, body, onEvent) {
-    const resp = await fetch(this.base + path, this._json("POST", body));
+    const opts = this._json("POST", body);
+    opts.headers = this._authHeaders(opts.headers);
+    const resp = await fetch(this.base + path, opts);
     if (!resp.ok) {
       const data = await resp.json().catch(() => null);
       throw new Error((data && data.detail) || `请求失败（HTTP ${resp.status}）`);

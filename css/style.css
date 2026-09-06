@@ -33,6 +33,21 @@ body {
   background: #14141d;
 }
 
+/* 全局统一滚动条（与浅色面板协调；具体屏可覆盖宽度/配色） */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: rgba(240, 238, 246, 0.5); border-radius: 6px; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(124, 107, 213, 0.35);
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+}
+*::-webkit-scrollbar-thumb:hover { background: rgba(124, 107, 213, 0.6); }
+*::-webkit-scrollbar-corner { background: transparent; }
+html {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(124, 107, 213, 0.45) rgba(240, 238, 246, 0.4);
+}
+
 /* ────────── 屏幕容器 ────────── */
 .screen {
   position: fixed;
@@ -342,9 +357,32 @@ body {
 /* 右侧操作区：进入学习 + 删除 并排 */
 .doc-btns {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;   /* 资料库按钮改为纵向两行：主操作 + 工具入口 */
+  align-items: flex-end;
+  gap: 6px;
   flex-shrink: 0;
+}
+.doc-btns-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.doc-tool {
+  cursor: pointer;
+  border: 1px solid #cbbce4;
+  background: #f4f1ea;
+  color: var(--ink);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  transition: all 0.15s;
+}
+.doc-tool:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .doc-enter {
@@ -530,18 +568,47 @@ body {
   background-image: url("../images/前端背景/前端背景.png");  /* 前端背景图（cover + 居中） */
   background-size: cover;
   background-position: center;
+  overflow-y: scroll;               /* 始终保留滚动条：内容超高时滚动、内容少时也显示空滚动条槽 */
+  overscroll-behavior: contain;     /* 滚动到底/顶不连带到背后页面 */
+  scrollbar-gutter: stable;         /* 预留滚动条槽宽度，避免内容抖动 */
 }
+
+/* 设置屏自定义滚动条（内容超高时出现，样式与浅色卡片协调、清晰可见） */
+#screen-settings::-webkit-scrollbar { width: 12px; }
+#screen-settings::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+}
+#screen-settings::-webkit-scrollbar-thumb {
+  background: rgba(120, 110, 180, 0.5);
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+}
+#screen-settings::-webkit-scrollbar-thumb:hover { background: rgba(120, 110, 180, 0.75); }
+#screen-settings { scrollbar-width: auto; scrollbar-color: rgba(120, 110, 180, 0.55) rgba(255, 255, 255, 0.3); }
 
 /* 需求3：设置屏自适应网格布局（宽屏并排 / 窄屏堆叠，不再挤成一列） */
 .settings-layout {
-  max-width: 940px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 22px 24px 44px;
+  padding: 22px 26px 60px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 16px;
   align-items: start;
 }
+
+/* 连接设置内部：字段两两并排的自适应网格（宽屏 2 列、窄屏 1 列） */
+.settings-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 4px 24px;
+  align-items: start;
+}
+.field { min-width: 0; }
+.field .field-label { margin-top: 18px; }   /* 2列网格里保持纵向节奏 */
+/* 需横跨整行（如复选框说明、整行输入）时 */
+.field-span2 { grid-column: 1 / -1; }
 
 .settings-group {
   background: rgba(255, 255, 255, 0.86);
@@ -551,11 +618,13 @@ body {
   border-radius: 14px;
   padding: 18px 22px;
   box-sizing: border-box;
+  min-width: 0;                      /* 允许子网格在窄屏收缩而不撑破 */
 }
 
-.group-conn {
-  grid-column: 1 / -1;          /* 连接设置占满整行 */
-}
+.group-conn { grid-column: 1 / -1; }  /* 连接设置占满整行 */
+.group-display { grid-column: span 5; }
+.group-quiz    { grid-column: span 7; }
+.group-router  { grid-column: 1 / -1; }  /* 模型路由内容多，占满整行 */
 
 .group-title {
   font-size: 15px;
@@ -567,14 +636,17 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+@media (max-width: 900px) {
+  .group-display,
+  .group-quiz { grid-column: 1 / -1; }
+}
+
 @media (max-width: 720px) {
   .settings-layout {
     grid-template-columns: 1fr;
-    padding: 16px 14px 36px;
+    padding: 16px 14px 44px;
   }
-  .group-conn {
-    grid-column: auto;
-  }
+  .settings-fields { grid-template-columns: 1fr; }
 }
 
 .field-label {
@@ -600,6 +672,62 @@ body {
   color: var(--ink-soft);
   margin-top: 6px;
 }
+
+/* ───── 模型路由面板（云端-边缘混合降级） ───── */
+.router-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+.router-status {
+  background: rgba(245, 243, 250, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.r-line { color: var(--ink); }
+.r-sub { color: var(--ink-soft); font-size: 12px; }
+.r-badge {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  vertical-align: middle;
+}
+.r-badge.ok   { background: #e6f6ec; color: #1b7f3b; border-color: #b6e3c6; }
+.r-badge.bad  { background: #fdeaea; color: #c0392b; border-color: #f3c2c2; }
+.r-badge.warn { background: #fff5e0; color: #b9770e; border-color: #f0d9a8; }
+.r-badge.sel  { background: #eae6fb; color: #5b3fd6; border-color: #cdbef5; }
+.r-badge.cloud{ background: #e7f0fd; color: #2563c9; border-color: #c2d8f5; }
+.router-test { margin-top: 18px; }
+.router-test-row { display: flex; gap: 10px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+.gen-select-sm { width: auto; min-width: 130px; }
+.router-test-out, .router-bench-out { margin-top: 8px; font-size: 13px; }
+.r-sample {
+  margin-top: 6px; padding: 8px 10px; border-radius: 8px;
+  background: #fbfafd; border: 1px solid var(--line);
+  max-height: 160px; overflow: auto; color: var(--ink);
+}
+.r-table {
+  width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px;
+}
+.r-table th, .r-table td { border: 1px solid var(--line); padding: 6px 8px; text-align: center; }
+.r-table th { background: #f1eefb; color: var(--accent-dark); font-weight: 700; }
+.r-table tbody tr:nth-child(even) { background: #faf8fe; }
+
+/* 判题反馈里的引擎来源徽标 */
+.q-fb-engine {
+  display: inline-block; margin: 4px 0 2px; padding: 1px 9px;
+  border-radius: 999px; font-size: 12px; font-weight: 700;
+}
+.q-fb-engine.fb-local     { background: #e6f6ec; color: #1b7f3b; }
+.q-fb-engine.fb-cloud     { background: #e7f0fd; color: #2563c9; }
+.q-fb-engine.fb-heuristic { background: #fff5e0; color: #b9770e; }
 
 .settings-actions {
   margin-top: 26px;
@@ -761,6 +889,61 @@ body {
   width: 1px;
   height: 22px;
   background: #3a3a4b;
+}
+
+/* 控制栏分组：组内紧凑、组间用分隔条区隔，突出「播放控制」主组 */
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.control-primary .ctl-btn {
+  border-color: var(--accent);
+  color: #fff;
+}
+.control-primary .ctl-btn:hover,
+.control-primary .ctl-btn.active {
+  background: var(--accent);
+}
+
+/* —— 窄屏：底部控制栏自动折叠为多行、分组堆叠，弹题框/弹窗完整显示 —— */
+@media (max-width: 760px) {
+  .control-bar {
+    height: auto;
+    padding: 8px 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-content: center;
+  }
+  .ctl-sep {
+    display: none;                 /* 窄屏去掉分隔竖条，改为分组自然留白 */
+  }
+  .control-group {
+    gap: 6px;
+  }
+  .ctl-btn {
+    padding: 7px 11px;
+    font-size: 12px;
+  }
+  .control-hint {
+    display: none;                /* 窄屏隐藏底部快捷键提示，减小占用 */
+  }
+  .question-box,
+  .modal-card {
+    max-height: 78vh;
+    overflow-y: auto;
+  }
+}
+@media (max-width: 480px) {
+  .dialog-box {
+    padding: 10px 14px;
+  }
+  .report-fab,
+  .wrongbook-fab,
+  .lecture-fab {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
 }
 
 /* 讲师入口：主界面右侧悬浮按钮 */
@@ -1114,29 +1297,20 @@ body {
   flex-shrink: 0;
 }
 
-/* 讲师模式：复用底部对话栏 #dialog-box 变身辅导栏（不再用独立的弹题框面板），
-   与「讲述者/提问者」共用同一条对话栏。切换时隐藏台词文本、显示会话区。 */
-#dialog-box.lecture-mode .dialog-text {
-  display: none;
-}
-#dialog-box.lecture-mode #dialog-name {
-  display: none;
-}
+/* 讲师模式：完全复用底部对话栏 #dialog-box —— 讲师说话显示在
+   dialog-name/dialog-text（与讲述者/提问者同一位），仅栏底显示输入行+工具栏。 */
 #dialog-box.lecture-mode .lecture-session {
   display: flex;
 }
 
-/* ────────── 讲师一对一辅导栏（复用底部对话栏 #dialog-box）──────────
-   与「讲述者/提问者」共用同一条底部对话栏：进入讲师模式时，#dialog-box
-   切换成纵向布局，隐藏台词文本，显示会话区(名字徽标/聊天记录/输入行/工具栏)。
-   沿用底部对话框本身的米色渐变圆角框，保证三者视觉完全一致。 */
+/* 讲师模式：底部对话栏仍是同一张卡，讲师说话显示在 dialog-name/dialog-text
+   （与讲述者/提问者同一位），仅在这张卡下端追加一行输入 + 精简工具栏，视觉统一。 */
 #dialog-box.lecture-mode {
-  height: auto;                    /* 撑高以容纳多轮记录 + 输入行 */
-  min-height: 240px;
-  max-height: calc(100vh - var(--dialog-height) - 40px);
+  height: auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;                /* 溢出交给内部 .lecture-chat 滚动 */
+  justify-content: flex-end;       /* 内容贴底，输入行位于栏底 */
   animation: lectureSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1146,48 +1320,108 @@ body {
   to   { transform: translateY(0);    opacity: 1; }
 }
 
-.lecture-header {
+/* 输入行 + 工具栏作为对话栏底部的紧凑一段 */
+#dialog-box.lecture-mode .lecture-session {
+  margin-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding-top: 10px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 10px;
-  padding-bottom: 10px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
 }
 
-.lecture-title {
-  display: inline-flex;
+/* 讲师会话区：工具栏（返回学习靠右）、清爽输入行、圆润按钮（简约大方） */
+.lecture-toolbar {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 5px 14px;
+  justify-content: flex-end;   /* 返回学习靠右 */
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* 「返回学习」：次按钮（细边框胶囊） */
+#btn-lecture-close {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  font-size: 14px;
+  padding: 12px 22px;
   border-radius: 999px;
   letter-spacing: 1px;
-  box-shadow: 0 2px 8px rgba(124, 107, 213, 0.35);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+#btn-lecture-close:hover {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  background: rgba(124, 107, 213, 0.08);
 }
 
-.lecture-header .btn-ghost {
-  color: var(--ink-soft);
-}
-
-.lecture-header .btn-ghost:hover {
-  color: var(--bad);
-}
-
-/* 会话区在对话栏内自适应填充，去掉原本的分隔虚线（徽标已贴顶） */
-#dialog-box.lecture-mode .lecture-session {
-  margin-top: 0;
-  border-top: none;
-  padding-top: 0;
+/* 输入行：输入框 + 两个按钮并排一行、高度统一、两端对齐 */
+.lecture-input-row {
   display: flex;
-  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* 输入框：清爽圆角、自动高度、聚焦紫环 */
+.lecture-input-row .q-input {
   flex: 1;
-  min-height: 0;
+  min-height: 48px;
+  max-height: 120px;
+  resize: none;
+  font-family: inherit;
+  font-size: calc(var(--base-font) + 2px);
+  line-height: 1.6;
+  padding: 11px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.lecture-input-row .q-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(124, 107, 213, 0.14);
+}
+.lecture-input-row .q-input::placeholder {
+  color: #a7a2b8;
+}
+
+/* 「提问」：显著主按钮（胶囊，更大更醒目，与返回学习同高） */
+#btn-lecture-send {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 34px;
+  font-size: 15px;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 3px 12px rgba(124, 107, 213, 0.3);
+  transition: filter 0.15s, transform 0.1s, opacity 0.15s;
+}
+#btn-lecture-send:hover {
+  filter: brightness(1.06);
+}
+#btn-lecture-send:active {
+  transform: scale(0.97);
+}
+#btn-lecture-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
 }
 
 /* ────────── 填空/简答输入区（需求1：重做 UI，输入框加大）────────── */
@@ -1294,6 +1528,22 @@ body {
   font-size: calc(var(--base-font));
 }
 
+/* ────────── 演示模式角标（P1 离线演示）────────── */
+.demo-badge {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 200;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
 /* ────────── 学习报告面板（需求：嵌入 ECharts）────────── */
 .report-fab {
   position: absolute;
@@ -1319,37 +1569,189 @@ body {
   border-color: var(--accent);
 }
 
-.report-card {
-  width: min(760px, 92vw);          /* 比普通弹窗更宽，容纳两张图 */
+/* ────────── 错题本面板（需求：独立错题本）────────── */
+.wrongbook-fab {
+  position: absolute;
+  right: 14px;
+  top: 60px;                       /* 播放器右上、报告按钮下方 */
+  z-index: 9;
+  cursor: pointer;
+  border: 1px solid rgba(244, 241, 234, 0.35);
+  background: rgba(20, 20, 30, 0.82);
+  color: #f4f1ea;
+  font-size: 14px;
+  letter-spacing: 1px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.wrongbook-fab:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* 错题本：简洁卡片式布局，分区标题 + 清爽条目 + 右侧操作 */
+.wrongbook-card {
+  width: min(720px, 92vw);
   max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+.wrongbook-list {
+  flex: 1;
   overflow-y: auto;
+  margin: 6px 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wrong-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--accent-dark);
+  margin: 8px 2px 2px;
+}
+.wrong-group::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.wrong-item {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.wrong-item:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 14px rgba(124, 107, 213, 0.12);
+}
+.wrong-q {
+  font-weight: 700;
+  font-size: calc(var(--base-font));
+  color: var(--ink);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+.wrong-row {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  margin: 5px 0;
+  line-height: 1.5;
+  align-items: baseline;
+}
+.wrong-label {
+  flex: 0 0 auto;
+  width: 64px;
+  color: var(--ink-soft);
+}
+.wrong-val {
+  flex: 1;
+}
+.wrong-bad { color: var(--bad); }
+.wrong-good { color: var(--good); }
+.wrong-explain {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  background: rgba(124, 107, 213, 0.06);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.wrong-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 10px;
+}
+.wrong-due-tag {
+  display: inline-block;
+  background: rgba(198, 40, 40, 0.1);
+  color: var(--bad);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.wrong-next-due {
+  color: var(--ink-soft);
+}
+.wrong-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  border-top: 1px dashed var(--line);
+  padding-top: 10px;
+}
+.wrong-actions .btn-ghost {
+  font-size: 12px;
+  padding: 6px 14px;
+}
+
+/* 学习报告改为「横向平铺」：报告卡片尽量铺满视口，图表用自适应网格并排，
+   统计条与关闭按钮独占整行，避免用户竖向滑动才能看完各图。
+   用 #report-modal .report-card 提高优先级，覆盖后定义的 .modal-card 宽度。 */
+#report-modal .report-card {
+  width: 96vw;
+  max-width: 1500px;
+  height: 92vh;
+  max-height: 92vh;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-auto-rows: min-content;
+  gap: 16px 18px;
+  align-items: start;
+  align-content: start;
+}
+
+.report-card .modal-title {
+  grid-column: 1 / -1;               /* 标题独占整行 */
 }
 
 .report-desc {
+  grid-column: 1 / -1;               /* 描述独占整行 */
   font-size: 13px;
   color: var(--ink-soft);
-  margin-bottom: 14px;
+  margin-bottom: 4px;
   line-height: 1.6;
 }
 
-/* 顶部统计条：总作答 / 答对 / 总体正确率 */
+/* 顶部统计条：总作答 / 答对 / 总体正确率（独占整行） */
 .report-stats {
+  grid-column: 1 / -1;
   display: flex;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 8px;
 }
 
 .stat-tile {
   flex: 1;
   text-align: center;
-  padding: 14px 8px;
+  padding: 12px 8px;
   background: #f7f5fc;
   border: 1px solid var(--line);
   border-radius: 10px;
 }
 
 .stat-num {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--accent-dark);
 }
@@ -1360,35 +1762,151 @@ body {
   margin-top: 4px;
 }
 
-/* 图表区 */
+/* 空态提示、关闭按钮均独占整行 */
+.report-empty {
+  grid-column: 1 / -1;
+  padding: 30px 0;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.report-card #btn-report-close {
+  grid-column: 1 / -1;
+  justify-self: center;
+}
+
+/* 图表区：每个图表块作为网格单元，横向并排 */
 .report-chart-wrap {
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .report-chart-title {
   font-size: 13px;
   font-weight: 700;
   color: var(--ink);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .report-echart {
   width: 100%;
-  height: 300px;                    /* 雷达/柱状固定高度，适配 ECharts 初始化 */
+  height: 280px;                    /* 统一高度，适配网格并排时 ECharts 初始化 */
 }
 
-/* 思维导图：树形分支需要的视口比普通图更高，便于展开/缩放 */
-.report-tree {
-  height: 420px;
+/* —— 学情诊断面板（薄弱诊断与复习建议，独占整行）—— */
+.diagnosis-wrap {
+  grid-column: 1 / -1;
 }
-
-.report-empty {
-  padding: 30px 0;
-  text-align: center;
+.report-diagnosis {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.diag-summary {
+  font-size: 13px;
   color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+.diag-summary b {
+  color: var(--accent-dark);
+}
+.diag-order {
+  font-size: 12px;
+  color: var(--accent-dark);
+  font-weight: 700;
+  margin-bottom: 6px;
+  line-height: 1.6;
+}
+.diag-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: #fff;
+}
+.diag-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.diag-num {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.diag-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
   font-size: 14px;
-  line-height: 1.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.diag-chip {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.diag-due { background: #ffebee; color: var(--bad); }
+.diag-weak { background: #fff3e0; color: #b26a00; }
+.diag-untouched { background: #eceaf7; color: var(--ink-soft); }
+.diag-ok { background: #e8f5e9; color: var(--good); }
+.diag-mastery {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.diag-mastery-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: #eaebee;
+  overflow: hidden;
+}
+.diag-mastery-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+}
+.diag-mastery-num {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--accent-dark);
+  width: 56px;
+  text-align: right;
+}
+.diag-action {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.diag-prereq {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* 思维导图：树形分支需要略高，便于展开/缩放 */
+.report-tree {
+  height: 360px;
 }
 
 /* 需求3：弹题类型设置样式 */
@@ -1527,6 +2045,48 @@ body {
 .slot-empty {
   color: var(--ink-soft);
 }
+
+/* 存档统一面板（保存 + 读取） */
+.modal-archive-card {
+  width: min(720px, 92vw);
+  max-height: 82vh;
+  overflow-y: auto;
+}
+.archive-section-hint {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin: 16px 0 8px;
+}
+.archive-save-area {
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+}
+#archive-save-grid.slot-grid { margin-bottom: 6px; }
+.archive-current {
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+  background: #eef2fe;
+}
+
+/* 存档管理面板（保存 + 读取合并）：占用槽可读可覆盖 */
+.slot-cell { position: relative; }
+.slot-overwrite {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #f1eefb;
+  color: var(--accent-dark);
+}
+.slot-overwrite:hover { background: var(--accent); color: #fff; }
+.slot-empty-tip { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+.slot-grid.slot-manage { grid-template-columns: repeat(2, 1fr); }
 
 /* ────────── 需求1：弹题「直接查看答案」按钮 ────────── */
 .q-toolbar {
@@ -1767,6 +2327,75 @@ body {
   height: 100%;
   object-fit: cover;                  /* 裁剪填满圆形，不失真 */
   display: block;
+}
+
+/* 头像可点击（登录后）→ 弹出用户管理面板 */
+.user-avatar {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.user-avatar:hover {
+  border-color: var(--accent);
+}
+
+/* 头像仅出现在主页（其它界面由 app.js 的 showScreen 强制隐藏） */
+.user-avatar.screen-hidden {
+  display: none !important;
+}
+
+/* 用户管理面板：头像下拉，管理当前用户登录 / 退出 */
+.user-menu {
+  position: fixed;
+  top: 58px;                            /* 头像下方 */
+  left: 12px;
+  z-index: 61;
+  width: 190px;
+  background: rgba(20, 20, 30, 0.9);
+  border: 1px solid rgba(244, 241, 234, 0.25);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.user-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.user-menu-header img {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.user-menu-name {
+  color: #f4f1ea;
+  font-size: 13px;
+  font-weight: 700;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-menu-item {
+  width: 100%;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: #f4f1ea;
+  font-size: 13px;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.user-menu-item:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 /* ═══════════════════════════════════════════════

@@ -45,25 +45,24 @@
       box.classList.add("hidden");
       box.classList.remove("lecture-mode");
 
-      // 3. 底部对话栏变身讲师辅导栏：复用 #dialog-box，
-      //    与讲述者/提问者共用同一条对话栏
+      // 3. 底部对话栏复用 #dialog-box：讲师说话显示在 dialog-name/dialog-text
+      //    同一位（与讲述者/提问者共用同一条对话栏），仅栏底显示输入行+工具栏
       const db = $("dialog-box");
       db.classList.remove("dialog-hidden");
       db.classList.add("lecture-mode");
 
-      // 3.5 收起历史记录折叠框（每次进入复位，避免残留展开态）
-      const histWrap = $("lecture-history");
-      if (histWrap) histWrap.classList.add("hidden");
-
       // 4. 切到讲师立绘（单人占屏），隐藏双人
       Render.showLecturer("kaixin");  // 讲师进场：欢迎表情
 
-      // 5. 会话区就绪
+      // 5. 在共用对话栏中出讲师身份与开场白
+      $("dialog-name").textContent = LECTURER_NAME;
+      $("dialog-text").textContent = "讲师已就位。你可以针对当前难点自由提问：输入问题后按 Enter。";
+
+      // 6. 会话区就绪（输入行）
       const session = $("lecture-session");
       session.classList.remove("hidden");
-      $("lecture-chat").innerHTML =
-        '<div class="lec-empty">🎓 讲师已就位。你可以针对当前难点自由提问，我会一对一为你讲透。</div>';
       $("lecture-input").value = "";
+      $("lecture-input").style.height = "";
       $("lecture-input").focus();
 
       this.active = true;
@@ -83,24 +82,18 @@
         return;
       }
 
-      // 追加用户气泡
-      const chatBox = $("lecture-chat");
-      const userBubble = document.createElement("div");
-      userBubble.className = "lec-user";
-      userBubble.textContent = q;
-      chatBox.appendChild(userBubble);
-      chatBox.scrollTop = chatBox.scrollHeight;
-
-      // 讲师气泡（流式填充）
-      const tutorBubble = document.createElement("div");
-      tutorBubble.className = "lec-tutor";
-      chatBox.appendChild(tutorBubble);
-      let full = "";
+      // 先在共用对话栏中显示用户的提问
+      const nameEl = $("dialog-name");
+      const textEl = $("dialog-text");
+      nameEl.textContent = "你";
+      textEl.textContent = q;
 
       const sendBtn = $("btn-lecture-send");
       sendBtn.disabled = true;
       sendBtn.textContent = "讲师讲解中…";
       input.disabled = true;
+      let full = "";
+      let lastEngine = "";
 
       try {
         await Api.lectureChat(
@@ -108,57 +101,27 @@
           q,
           this.context,
           (seg) => {
-            // 逐段：先换讲师表情，再追加文本
+            // 逐段：先换讲师表情，再在共用对话栏同一位追加文本
             if (seg.talk_emo) Render.showLecturer(seg.talk_emo);
-            tutorBubble.textContent = (full += seg.text);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            if (seg.engine) lastEngine = seg.engine;
+            const engLabel = lastEngine === "local" ? "（本地 Qwen2.5-1.5B 离线回答）"
+              : lastEngine === "cloud" ? "（云端 DeepSeek 回答）"
+              : lastEngine === "heuristic" ? "（离线兜底回答）" : "";
+            nameEl.textContent = LECTURER_NAME + engLabel;
+            textEl.textContent = (full += seg.text);
           }
         );
       } catch (err) {
-        tutorBubble.textContent = `（讲师应答失败：${err.message}）`;
+        textEl.textContent = `（讲师应答失败：${err.message}）`;
         Render.toast(`讲师应答失败：${err.message}`);
       } finally {
         sendBtn.disabled = false;
         sendBtn.textContent = "提问";
         input.disabled = false;
+        input.value = "";
+        input.style.height = "";   // 清空后输入框高度复位
         input.focus();
       }
-    },
-
-    /* —— 展开/收起「历史记录」折叠框：调接口拉过往问答并以只读气泡展示 —— */
-    async toggleHistory() {
-      const wrap = $("lecture-history");
-      if (!wrap) return;
-      if (!wrap.classList.contains("hidden")) {
-        wrap.classList.add("hidden");
-        return;
-      }
-      if (!Modes.scriptId) {
-        Render.toast("尚未进入学习，没有讲师问答记录。");
-        return;
-      }
-      const bubbles = $("lecture-history-bubbles");
-      if (!bubbles.children.length) {
-        bubbles.innerHTML = '<div class="lec-empty">加载中…</div>';
-      }
-      try {
-        const records = await Api.lectureHistory(Modes.scriptId);
-        bubbles.innerHTML = "";
-        if (!records || !records.length) {
-          bubbles.innerHTML = '<div class="lec-empty">📭 暂无历史对话，先去向讲师提问吧。</div>';
-        } else {
-          records.forEach((r) => {
-            const bubble = document.createElement("div");
-            bubble.className = r.role === "user" ? "lec-user" : "lec-tutor";
-            // 只读展示：用 textContent 防注入，逐行保留换行
-            bubble.textContent = r.content || "";
-            bubbles.appendChild(bubble);
-          });
-        }
-      } catch (err) {
-        bubbles.innerHTML = `<div class="lec-empty">加载历史失败：${err.message}</div>`;
-      }
-      wrap.classList.remove("hidden");
     },
 
     /* —— 退出讲师模式，返回双人学习 —— */
@@ -179,9 +142,6 @@
       db.classList.remove("lecture-mode");
       db.classList.remove("dialog-hidden");
       $("lecture-session").classList.add("hidden");
-      // 收起状态复位：退出时一并隐藏历史折叠框，避免残留展开态
-      const histWrap = $("lecture-history");
-      if (histWrap) histWrap.classList.add("hidden");
       Render.hideLecturer();   // hideLecturer 现在会恢复双人立绘
 
       // 回到弹题框：重新展示弹题（原题上下文）
@@ -245,9 +205,6 @@
         Lecture.enter("question", ctxParts.join("\n"));
       });
 
-      // 「历史记录」折叠按钮：展开/收起过往讲师问答（只读气泡）
-      $("btn-lecture-history").addEventListener("click", () => Lecture.toggleHistory());
-
       $("btn-lecture-send").addEventListener("click", () => Lecture.ask());
       $("lecture-input").addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
@@ -255,8 +212,15 @@
           Lecture.ask();
         }
       });
-      // 顶部「✕ 关闭」按钮同样结束辅导（此前漏绑，导致退出键无法使用）
-      $("btn-lecture-close-top").addEventListener("click", () => Lecture.end());
+      // 输入框内容自适应增高（输入多时自动长高，封顶 120px）
+      const inputEl = $("lecture-input");
+      const autoGrow = () => {
+        inputEl.style.height = "auto";
+        inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + "px";
+      };
+      inputEl.addEventListener("input", autoGrow);
+      inputEl.addEventListener("focus", autoGrow);
+      // 「返回学习」结束辅导
       $("btn-lecture-close").addEventListener("click", () => Lecture.end());
     },
   };

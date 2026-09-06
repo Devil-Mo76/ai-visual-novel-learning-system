@@ -34,11 +34,33 @@ class InterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
+def _desensitize_filter(record) -> bool:
+    """日志脱敏：把日志里可能出现的 api_key/password/token=... 掩码（安全加固 B4）。"""
+    import re
+
+    msg = record.get("message") or ""
+    msg = re.sub(
+        r"(api_key|password|token)['\"]?\s*[:=]\s*['\"][^'\"]*['\"]",
+        r"\1=***",
+        msg,
+    )
+    record["message"] = msg
+    return True
+
+
 def setup_logging() -> None:
     """配置 Loguru：移除默认 sink，注册 终端 + 按日切分文件 两个 sink，并接管 stdlib。"""
     logger.remove()  # 去掉 Loguru 自身默认 stderr sink，避免与下方终端 sink 重复
 
     # 1) 终端临时日志（INFO 起，实时可见，用于单次使用记录）
+    #    先确保 sys.stderr 以 UTF-8 输出（Windows 默认可能是 GBK），
+    #    配合终端 chcp 65001，保证中文在终端/转发管道都不乱码。
+    #    注：loguru 的 encoding 参数仅对「路径字符串」sink 生效，传给 file-like
+    #    (sys.stderr) 会抛 TypeError，故改在 stderr 流自身 reconfigure。
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass  # 非 TextIOWrapper（如无 stderr）时忽略
     logger.add(
         sys.stderr,
         level="INFO",
@@ -46,6 +68,7 @@ def setup_logging() -> None:
         colorize=True,
         backtrace=False,
         diagnose=False,
+        filter=_desensitize_filter,     # 日志脱敏
     )
 
     # 2) 按日期切分的文件日志（backend/logs/app_YYYY-MM-DD.log）
@@ -61,6 +84,7 @@ def setup_logging() -> None:
         format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <7} | {name}:{function}:{line} | {message}",
         backtrace=True,
         diagnose=True,
+        filter=_desensitize_filter,     # 日志脱敏
     )
 
     # 3) 接管 stdlib logging（各 router/service 的 logging.getLogger 统一汇入 Loguru）

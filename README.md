@@ -10,6 +10,7 @@
 
 ## 目录
 
+0. [本次改版速览](#0-本次改版速览readme-已同步到当前实现)
 1. [项目简介](#1-项目简介)
 2. [功能总览](#2-功能总览)
 3. [总体架构](#3-总体架构)
@@ -29,6 +30,21 @@
 17. [Git 版本管理与回滚](#17-git-版本管理与回滚)
 18. [已知边界与避坑](#18-已知边界与避坑)
 19. [常见问题](#19-常见问题)
+
+---
+
+## 0. 本次改版速览（README 已同步到当前实现）
+
+> 本 README 针对近期一批改造已重新校准，主要变化如下：
+
+- **模型接入改为 DeepSeek V4 官方 API**（`https://api.deepseek.com`，模型 `deepseek-v4-flash / pro / flash-vision-exp`），并新增「思考强度」档位（高/中/低 → `reasoning_effort`），连接设置页模型改下拉选择、杜绝手填显示名导致 400。
+- **本地离线引擎就绪**：llama-cpp-python + `models/qwen2.5-1.5b-instruct-q4_k_m.gguf` 已可本地判题/讲师讲解（纯离线、零外部请求）。模型路由面板可探测/自测/跑基准。
+- **本地知识库（RAG）**：上传资料自动切块建索引（`knowledge/kb_{doc_id}/`，纯标准库关键词检索），判题与讲师讲解改为**按问题检索相关片段**而非整篇截断注入。
+- **剧本按主题考点自动成章**：不再让用户选章节数；每个主题考点单独一章、每章配 1 道该考点的题，宁多勿漏覆盖全部知识点。
+- **存档系统统一**：播放器「存档」与主菜单「读取存档」共用同一套读取逻辑，每条存档标注学习资料名；播放器「存档」= 保存 + 读取合一（面板顶部存当前进度、下方读全部存档）。
+- **模型路由面板**：路由策略改为"短任务(判题·讲师讲解)→本地→云端 / 长任务(生成剧本)→云端"的用途标注形式；并修复了本地/云端状态在不同接口结构下的误显示。
+- **设置界面重排版**：模块自适应网格布局 + 统一滚动条；播放器等若干 UI 优化。
+- **工程/性能**：ECharts 改为打开学习报告时才按需加载，不再阻塞首屏；登录改为 `<form>` 语义（消除控制台提示）。
 
 ---
 
@@ -53,7 +69,8 @@
 | 图表 | ECharts（vendor/echarts.min.js，本地化离线可用） |
 | 后端 | Python + FastAPI + Uvicorn |
 | 数据库 | SQLAlchemy + SQLite（预留 PostgreSQL 路径） |
-| AI 模型 | DeepSeek（经 SiliconFlow 硅基流动中转站，OpenAI 兼容协议） |
+| AI 模型 | 混合：本地 Qwen2.5-1.5B-Instruct（llama-cpp-python 进程内 GGUF 推理，离线判题/讲师/讲解）+ 云端 DeepSeek V4（官方 `https://api.deepseek.com`，OpenAI 兼容协议），由 `services/llm.py` 按任务路由 |
+| 本地知识库 | 纯标准库实现的关键词检索（分块 + 类 BM25）落盘 `knowledge/kb_{doc_id}/`，上传即入库，判题/讲解按需检索相关片段 |
 | AI 编排 | LangChain（langchain-openai / langchain-deepseek），未安装时回退 requests 直连 |
 
 **关键词汇约定**
@@ -77,7 +94,7 @@
 | 功能 | 入口 | 说明 |
 |---|---|---|
 | 上传 / 解析资料 | 资料库「上传并解析」 | .docx / .pdf，上限 20MB，自动提取正文 |
-| 生成教学剧本 | 资料库「生成教学剧本」 | 选资料 → 章节数 → 题型勾选 → 学习背景（可选）→ AI 生成 |
+| 生成教学剧本 | 资料库「生成教学剧本」 | 选资料 → 题型勾选 → 学习背景（可选）→ AI 生成（章节按资料的主题考点自动划分，每考点一章并配 1 题，覆盖全部知识点） |
 | 双人对话播放 | 资料库「进入学习」/ 主菜单「继续学习」 | 逐句打字机播放，双向表情联动，空格/点击推进 |
 | 弹题作答 | 播放器（章节末尾） | 选择 / 填空 / 简答三种题型，AI 判题讲评 |
 | 学习报告 | 播放器右上角「📊 学习报告」 | 雷达图（各章维度掌握度）+ 柱状图（正确数/总尝试数）+ 总统计 |
@@ -85,8 +102,8 @@
 | 编辑剧本 | 资料库「✏ 编辑剧本」/ 播放器控制栏 | JSON 文本域修改标题/背景/台词/题目，保存覆盖 |
 | 讲师辅导 | 播放器右侧「📖 讲师」/ 弹题「🔍 深入学习」 | SSE 流式一对一讲解，多轮记忆 |
 | 讲师历史 | 讲师面板「📜 历史记录」 | 折叠框展示本次会话过往问答（只读气泡） |
-| 存档系统 | 播放器「保存/读取」 | 自动档 slot 0 + 手动档 1~9 |
-| 设置 | 主菜单「设置」 | API 地址/Key/模型、字体大小、题型勾选偏好 |
+| 存档系统 | 播放器「存档」/ 主菜单「读取存档」 | 保存与读取合一；每条存档标注学习资料名；自动档 slot0 + 手动档 1~9 |
+| 设置 | 主菜单「设置」 | 连接设置（DeepSeek V4 模型下拉 + 思考强度）、模型路由策略、字体大小、题型勾选 |
 
 ---
 
@@ -152,8 +169,14 @@ frontend/
 │   ├── 提问者/              # 艾玛表情立绘
 │   ├── 讲师/                # 讲师表情立绘
 │   ├── 用户头像/ 前端背景/ 历史记录头像/
+├── models/
+│   └── qwen2.5-1.5b-instruct-q4_k_m.gguf  # 本地千问权重（约 1.1GB，随项目预置）
+├── knowledge/
+│   └── kb_{doc_id}/        # 本地知识库：每份资料一份切块+索引（meta/chunks.json，上传自动生成）
+├── uploads/
+│   └── u{user_id}/         # 用户上传的原始文件落盘（按用户隔离）
 ├── vendor/
-│   └── echarts.min.js       # ECharts（本地化离线可用，学习报告图表依赖）
+│   └── echarts.min.js      # ECharts（本地化离线可用，打开学习报告时才按需加载）
 └── backend/
     ├── main.py              # FastAPI 入口：CORS + 路由注册 + 启动建表
     ├── config.py            # 环境配置（数据库、默认模型、CORS）
@@ -177,8 +200,11 @@ frontend/
     │   └── auth.py          # 认证
     └── services/
         ├── extractor.py     # .docx/.pdf → 纯文本
-        ├── script_engine.py # 剧本生成引擎 + 判题引擎（GRADING_PROMPT）
-        └── lecture_service.py # 讲师流式会话服务（多轮记忆）
+        ├── llm.py           # 云端-边缘混合路由层（本地 Qwen / 云端 DeepSeek V4、熔断、探测、基准）
+        ├── script_engine.py # 剧本生成引擎 + 判题引擎（角色卡 / SYSTEM_PROMPT / GRADING_PROMPT）
+        ├── lecture_service.py # 讲师流式会话服务（多轮记忆 + 每轮资料片段）
+        ├── knowledge_base.py  # 本地知识库：分块 + 类 BM25 检索 + 落盘 knowledge/（上传即入库）
+        └── metrics.py / ratelimit.py / search.py / mastery.py
 ```
 
 ---
@@ -227,11 +253,11 @@ python -m http.server 8080
 ```
 启动 → 登录(若接入) → 主菜单
   →「开始学习」→ 上传或选择资料 →「生成教学剧本」
-        → 设置章节数、勾选弹题类型、填写学习背景(可选)
+        → 勾选弹题类型、填写学习背景(可选)；章节由 AI 按主题考点自动划分
   → 剧本生成完成 →「进入学习」或稍后再学
-  → 播放器：双人对话逐句播放 → 每章末尾弹题作答 → 判题讲评 → 下一章
-  → 学习中可：保存/读取存档、自动播放、隐藏对话栏、召唤讲师(📖)、只看错题、编辑剧本、返回主菜单
-  → 打开「📊 学习报告」查看雷达图与各章正确率
+  → 播放器：双人对话逐句播放 → 每考点一章末尾弹题作答 → 判题讲评 → 下一章
+  → 学习中可：存档(保存+读取)、自动播放、隐藏对话栏、召唤讲师(📖)、只看错题、返回主菜单
+  → 打开「📊 学习报告」查看掌握度与各章正确率
 ```
 
 ---
@@ -252,7 +278,7 @@ python -m http.server 8080
 
 - **上传并解析**：支持 `.docx` / `.pdf`，上限 20MB；前端直接上传 → 后端解析正文 → 入库。
 - **资料列表**：显示标题、文件名、上传时间、正文预览（前 200 字）。有剧本的资料显示「▶ 进入学习」和「✏ 编辑剧本」两个同款按钮。
-- **生成剧本**：选中资料 → 设定章节数（默认 8）→ 可选「学习背景说明」→ 勾选弹题类型 → 生成。
+- **生成剧本**：选中资料 → 可选填「学习背景说明」→ 勾选弹题类型 → 生成。章节不手动指定，AI 按资料的主题考点自动分章（每考点一章 + 每章 1 题，覆盖全部知识点）。
 - **生成完成弹窗**：`进入学习` 或 `下次再学`（剧本已持久化，稍后仍可从列表进入）。
 - **编辑剧本**：`✏ 编辑剧本` 打开 JSON 编辑弹窗（详见 6.5）。
 
@@ -262,7 +288,7 @@ python -m http.server 8080
 - 每句台词携带「说话者表情」与「倾听者表情」，双向表情联动。
 - **推进方式**：点击画面 / 空格键；打字中途点击可跳过本句。
 - 每完成一个节点自动保存进度到主槽（slot 0）。
-- **控制栏**：保存、读取、✏ 编辑剧本、历史、设置、快进(占位)、**只看错题**、自动、隐藏对话栏、返回主菜单。
+- **控制栏**：自动播放、只看错题、返回主菜单 ｜ **存档**（保存+读取合一，标注资料名）、历史记录 ｜ 设置、隐藏对话栏。
 
 ### 6.4 弹题（三种题型）
 
@@ -300,8 +326,10 @@ python -m http.server 8080
 ### 6.7 存档系统
 
 - **自动存档**：slot 0，每播放完一个节点自动覆盖保存。
-- **手动存档**：slot 1~9，播放器「保存」选槽位。
-- **读取**：主菜单「读取存档」列出全部存档（标注资料名），点击即读档。
+- **手动存档**：slot 1~9。
+- **统一存档面板**（保存 + 读取合一）：播放器「存档」与主菜单「读取存档」共用同一套读取列表，每条存档标注**学习资料名** + 槽位 + 章节 + 时间，点击即读入对应资料；当前播放的剧本存档高亮。
+  - 游戏内点「存档」→ 面板顶部「保存当前进度」（点空档保存 / 点已有档覆盖），下方「读取存档」跨全部资料。
+  - 主菜单「读取存档」→ 仅读取列表。
 
 ---
 
@@ -366,6 +394,7 @@ config → api → modes → typing → render → streaming → lecture → app
 | progress | `/api/progress` | save / latest / slots / list / {id} / {id}/{slot} | 进度与存档 |
 | settings | `/api/settings` | GET / PUT / test | 设置读写与连接测试 |
 | lecture | `/api/lecture` | chat(SSE) / end / history | 讲师问答、清会话、历史查询 |
+| llm | `/api/llm` | status / probe / engine / test / bench | 模型路由层（云端-边缘混合降级）的观测与控制入口 |
 | analytics | `/api/analytics` | overview | 学习报告聚合 |
 | auth | `/api/auth` | 登录/注册 | 用户认证 |
 | main | `/api/health` | 1 | 健康检查 |
@@ -376,10 +405,12 @@ config → api → modes → typing → render → streaming → lecture → app
 
 ```
 前端 POST /api/scripts/generate
-  → routers/scripts.py 校验文档存在、读 Settings(api_base/key/model)
+  → routers/scripts.py 校验文档存在、读 Settings(api_base/key/model/thinking_level)
   → services/script_engine.py generate_script()
-      → 读资料前 80000 字符 + 学习背景 + 题型要求 拼 user_prompt
-      → _LLMClient 调 DeepSeek（SYSTEM_PROMPT 含双角色卡 + JSON 输出约束）
+      → 读资料全文 + 学习背景 + 题型要求 拼 user_prompt
+        （要求按「主题考点」自动分章：每考点一章 + 每章 1 题，宁多勿漏覆盖全资料）
+      → llm.route_stream_long_text 调 DeepSeek V4（默认中思考 medium，
+        配合 48000 max_tokens 给足正文；SYSTEM_PROMPT 含双角色卡 + JSON schema）
       → _extract_json 去 markdown 围栏、剥最外层花括号定位 JSON
       → ScriptPayload.model_validate + 章节补 id
       → 失败自动重试，最多 3 次
@@ -397,7 +428,7 @@ config → api → modes → typing → render → streaming → lecture → app
 **判题 + 落库**
 
 - 选择题：前端本地 `picked === step.answer` 判对错，判完异步 POST `/api/scripts/answer`（携带 `picked_index`）→ 后端 choice 分支兜底判定并 `_record_analytics` 落库。
-- 填空/简答：前端 POST `/api/scripts/answer` → `judge_answer()` 小 token/短超时调 AI → 落库。
+- 填空/简答：前端 POST `/api/scripts/answer` → 先用**本地知识库按题干检索最相关片段**（`knowledge_base.retrieve`）作为判题锚点 → `judge_answer()` 经模型路由层（`llm.route_chat`，**短任务本地 Qwen 优先、云端兜底**，无 Key 且无本地时退回关键词启发式）→ 落库；返回结果带 `engine` 字段标注本次由本地/云端/启发式判题。
 - 每次作答都写入 analytics 一行（错题本 / 学习报告的公共数据源）。
 
 **学习报告**
@@ -413,7 +444,8 @@ config → api → modes → typing → render → streaming → lecture → app
 
 ```
 前端 POST /api/lecture/chat
-  → lecture_service.chat_stream() 流式拆段
+  → routers/lecture.py 用 payload.question 经本地知识库检索相关片段作为 source_text
+  → lecture_service.chat_stream() 流式拆段（多轮记忆 + 每轮注入当前问题的资料片段）
   → 每段 yield {talk_emo, text} → router 拼 SSE "data: ..."
   → 流结束 "data: [DONE]"
 前端 GET /api/lecture/history?script_id=xxx → 返回本次会话问答记录（只读气泡）
@@ -429,6 +461,37 @@ config → api → modes → typing → render → streaming → lecture → app
 - 上传仅 `.docx/.pdf`；依赖缺失给明确的 pip 提示。
 - 判题失败保守处理：不判通过，返回可读提示。
 - 进度保存失败静默吞掉，不阻断播放；**答题上报失败改为 toast 提示**（见 6.4），避免用户误以为已记录。
+
+### 9.4 模型路由层（云端-边缘混合降级）
+
+> 网络工程专业契合点：把"该用云端还是本地"的决策从业务代码彻底剥离，由路由层按**任务类型 + 实时网络状况**自动选择，并具备**熔断降级 / 网络自适应回切**。这比"85% 准确率"这种虚指标更适合写进论文——它给出的是**分引擎的真实延迟与判题一致性**。
+
+**决策树（auto 模式）**
+
+```
+任务进来 ──┬─ 短任务（判题 / 评估 / 讲师短答）→ 本地 Qwen2.5-1.5B 优先（离线、低延迟、零流量）
+│            │      └─ 本地不可用 → 云端 DeepSeek（自动降级）
+│            └─ 长任务（生成剧本）          → 云端 DeepSeek 优先（生成质量）
+│                   └─ 网络不可用 / 超时 → 抛 RouteError → 由 P1「离线样例剧本」兜底
+└── 云端可用性由 CloudHealth 熔断器持续跟踪：closed →(连续失败)→ open(降级) →(冷却后探测成功)→ closed(回切)
+    可选后台看门狗线程（ROUTE_WATCHDOG=1）周期探测云端，断网恢复后自动回切。
+```
+
+**本地引擎**：`services/llm.py` 用 `llama-cpp-python` 在进程内加载 `models/qwen2.5-1.5b-instruct-q4_k_m.gguf` 推理，**不发起任何外部请求**，因此断网/无 Key 也能判题、也能做讲师。未安装推理库或模型缺失时自动视为不可用，静默降级云端。
+
+**开关**：`.env` 的 `LLM_ENGINE=auto|local|cloud`，或在「设置 → 模型路由」界面实时切换（落库 `settings.llm_engine`）。`local` 强制离线（答辩断网演示用），`cloud` 强制云端。
+
+**本地模型安装**（项目根 `backend/` 下执行）：
+
+```bash
+python install_local_llm.py        # 装 llama-cpp-python + 下载 Qwen2.5-1.5B 权重到 ../models/
+```
+
+脚本会自动挑 Windows 预编译 wheel（免编译），并从 `hf-mirror` 镜像下载约 1 GB 权重。模型已随项目预置在 `frontend/models/`。
+
+**真实指标采集（论文用）**：「设置 → 模型路由 → 运行基准测试」会拿同一批操作系统基础题，分别交给本地与云端判题，返回分引擎的**准确率 / 召回 / 特异度 / 平均·P50·P95 延迟 / 两者一致率**（`/api/llm/bench`）。判题这类短任务本地与云端一致性通常很高，生成类长任务走云端——这就是"按任务给真实指标"的数据来源。
+
+> 回归修复：早期版本调云端时漏传 `system`，导致角色卡与 JSON schema 未下发；现 `route_chat/route_stream` 全链路带 `system`，`GRADING_PROMPT`/`GOAL_EVAL_SYSTEM_PROMPT` 等评分标准都已生效。
 
 ---
 
@@ -488,13 +551,18 @@ SQLite 默认文件：`backend/learning.db`。ORM 定义见 `backend/models.py`�
 
 ### settings —— 系统配置（单行表，id 恒为 1）
 
-| 列 | 类型 | 说明 |
-|---|---|---|
-| id | Integer PK | 恒为 1 |
-| api_base | String(255) | 默认 `https://api.siliconflow.cn/v1` |
-| api_key | String(255) | 只落后端，仅返回掩码 |
-| model | String(100) | 默认 `deepseek-ai/DeepSeek-V3` |
-| updated_at | DateTime | 更新时间 |
+| 列 | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| id | Integer PK | 1 | 恒为 1 |
+| api_base | String(255) | `https://api.deepseek.com` | DeepSeek 官方 OpenAI 兼容地址 |
+| api_key | String(255) | 空 | 只落后端，仅返回掩码 |
+| model | String(100) | `deepseek-v4-flash` | DeepSeek V4 模型（下拉选择真实 ID） |
+| thinking_level | String(16) | `high` | 思考强度 high/medium/low → `reasoning_effort` |
+| web_search | Boolean | 1 | 讲师联网搜索开关 |
+| demo_mode | Boolean | 0 | 演示模式（离线样例） |
+| review_mode | String(16) | `smart` | 复习模式 smart / naive |
+| llm_engine | String(16) | `auto` | 模型路由 auto / local / cloud |
+| updated_at | DateTime | — | 更新时间 |
 
 ### lecture_history —— 讲师对话记录（预留持久化）
 
@@ -565,7 +633,6 @@ SQLite 默认文件：`backend/learning.db`。ORM 定义见 `backend/models.py`�
 {
   "document_id": 3,
   "title": "计算机四级（精简版）",
-  "chapter_count": 8,
   "learning_goal": "我是一名大四学生，正在准备考研……",
   "quiz_types": ["choice", "fill", "short"]
 }
@@ -575,8 +642,9 @@ SQLite 默认文件：`backend/learning.db`。ORM 定义见 `backend/models.py`�
 |---|---|---|---|
 | document_id | int | 是 | 目标资料 ID |
 | title | string | 否 | 剧本标题，缺省用资料标题/文件名 |
-| chapter_count | int | 否 | 1~30，默认 8；作为"不少于 N 章"下限约束 |
 | learning_goal | string | 否 | 学习背景说明（仅增强讲解侧重点，不改结构规则） |
+| quiz_types | string[] | 否 | 弹题类型集合，默认 ["choice"]；填空/简答的判题走本地/云端 AI |
+| （已移除）chapter_count | int | 否 | 旧版"手动章节数"已下线：章节现按资料的主题考点**自动划分**（每考点一章并配 1 题），无需前端传入 |
 | quiz_types | string[] | 否 | `["choice"]`；可选 `choice/fill/short` |
 
 响应（ScriptGenerateOut，含落库后的完整剧本）：`{script_id, script:{title, source, chapters}}`。
@@ -736,6 +804,43 @@ data: [DONE]
 ### 11.8 认证（auth）
 
 登录/注册接口（`/api/auth/*`）。无 Key 场景下用户 id 使用占位 1。
+
+---
+
+### 11.9 模型路由（llm，云端-边缘混合降级）
+
+> 这些接口只做「观测与控制」，不参与业务链路，失败也不影响学习主流程。
+
+#### GET `/api/llm/status`
+
+路由层状态全貌：当前策略、两引擎可用性、云端熔断态、调用统计、实际落地引擎（判题/生成各走哪）。前端「模型路由」面板直接消费。
+
+```json
+{
+  "engine_choice": "auto",
+  "policy": { "short_order": ["local", "cloud"], "long_order": ["cloud"] },
+  "local":  { "installed": true, "model_file": "qwen2.5-1.5b-instruct-q4_k_m.gguf", "model_size_mb": 1065.0, "load_seconds": 1.3 },
+  "cloud":  { "configured": true, "probe": { "reachable": true, "latency_ms": 120 }, "state": "closed" },
+  "effective": { "short": "local", "long": "cloud" }
+}
+```
+
+#### POST `/api/llm/probe`
+
+主动探测两引擎：本地真实加载模型（首次约数秒）+ 云端发 `GET /models`（不计费）。返回实测延迟与可用性。
+
+#### POST `/api/llm/engine`  `{ "engine": "auto|local|cloud" }`
+
+切换模型路由策略并落库 `settings.llm_engine`（无需重启即时生效）。
+
+#### POST `/api/llm/test`  `{ "engine": "auto|local|cloud", "task": "short|long", "prompt": "..." }`
+
+用指定引擎跑一句话，返回文本与延迟，用于「测一下」。限流 20 次/分钟。
+
+#### POST `/api/llm/bench`  `{ "engines": "local,cloud", "limit": 0 }`
+
+判题基准测试：同一批题分别交本地与云端判题，返回分引擎准确率/召回/特异度/延迟分位及两者一致率——论文「按任务给真实指标」的数据来源。限流 3 次/分钟（会真实消耗云端额度）。
+
 
 ---
 
@@ -941,9 +1046,11 @@ pip install -r requirements.txt
 
 ### 16.3 API 配置（设置界面，落库 settings 表）
 
-- API 地址默认 `https://api.siliconflow.cn/v1`（硅基流动中转站）。
-- API Key：只在后端保存，前端只见掩码；生成剧本/判题/讲师必须配置。
-- 默认模型 `deepseek-ai/DeepSeek-V3`。
+- API 地址默认 `https://api.deepseek.com`（DeepSeek 官方 OpenAI 兼容协议）。
+- API Key：只在后端保存，前端只见掩码；生成剧本/判题/讲师必须配置（纯离线本地引擎除外）。
+- 模型：下拉选择 DeepSeek V4 真实 ID —— `deepseek-v4-flash`（推荐）/ `deepseek-v4-pro` / `deepseek-v4-flash-vision-exp`（**勿手填显示名**，否则报 400）。
+- 思考强度：高/中/低 → `reasoning_effort=high/medium/low`（DeepSeek V4 的 `max_tokens` 是"思考+正文"共用预算，长任务建议中/低）。
+- 模型路由策略：auto / local / cloud（本地=Qwen 离线，云端=DeepSeek）；「本地引擎」即调用项目本地千问权重。
 
 ### 16.4 端口
 
@@ -1023,5 +1130,3 @@ A：安装 `psycopg2-binary`，`.env` 配置 `DATABASE_URL=postgresql://...`。�
 
 **Q：能改 AI 服务商或模型吗？**
 A：设置界面即可（API 地址/Key/模型）。默认 SiliconFlow 中转站的 DeepSeek。
-
----

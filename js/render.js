@@ -33,6 +33,10 @@ const Render = {
     const img = BG_MAP[key] || BG_FALLBACK;
     const bg = this.el.bg();
     bg.style.backgroundImage = `url("${encodeURI(img)}")`;
+    // 章节切换时淡入（restart 动画：先移除→强制 reflow→再加）
+    bg.classList.remove("bg-fade");
+    void bg.offsetWidth;
+    bg.classList.add("bg-fade");
   },
 
   /* —— 立绘：设置角色表情 —— */
@@ -125,7 +129,11 @@ const Render = {
 
   /* —— 对话栏 —— */
   showDialogBox() {
-    this.el.dialogBox().classList.remove("dialog-hidden");
+    const db = this.el.dialogBox();
+    db.classList.remove("dialog-hidden");
+    // 每句台词展示时重新上滑入场（restart 动画）\n    db.classList.remove("dialog-enter");
+    void db.offsetWidth;
+    db.classList.add("dialog-enter");
   },
   hideDialogBox() {
     this.el.dialogBox().classList.add("dialog-hidden");
@@ -177,13 +185,20 @@ const Render = {
   },
 
   /** 弹题反馈：正确显「✓」，错误显「✗」并给出讲评 */
-  showQuestionFeedback(correct, explain, correctChoice) {
+  showQuestionFeedback(correct, explain, correctChoice, engine = "") {
     const fb = this.el.qFeedback();
     fb.classList.remove("hidden");
     const head = correct ? "🎉 回答正确！" : "❌ 回答错误";
+    let engineBadge = "";
+    if (engine) {
+      const map = { local: "本地离线模型判题", cloud: "云端模型判题", heuristic: "关键词启发式判题" };
+      const cls = engine === "local" ? "fb-local" : (engine === "cloud" ? "fb-cloud" : "fb-heuristic");
+      engineBadge = `<span class="q-fb-engine ${cls}">${map[engine] || engine}</span>`;
+    }
     fb.innerHTML =
       `<div class="q-fb-head ${correct ? "fb-ok" : "fb-bad"}">${head}` +
       (correct ? "" : `（正确答案：${correctChoice}）`) + `</div>` +
+      engineBadge +
       `<div class="q-fb-explain">${explain}</div>`;
     this.el.qContinue().classList.remove("hidden");
   },

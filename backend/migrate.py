@@ -62,6 +62,12 @@ def _ensure_user_id_column(conn, table: str, seed_user_id: int) -> None:
     conn.commit()
 
 
+def _ensure_document_columns(conn) -> None:
+    """幂等地为 documents 表补本地知识库字段（file_path/chunk_count）。"""
+    _ensure_column(conn, "documents", "file_path", "VARCHAR(512)", "''")
+    _ensure_column(conn, "documents", "chunk_count", "INTEGER", "0")
+
+
 def _ensure_script_goal_columns(conn) -> None:
     """幂等地为 scripts 表补学习目标匹配度 + 更新时间字段。"""
     _ensure_column(conn, "scripts", "goal_score", "INTEGER", "NULL")
@@ -78,6 +84,79 @@ def _ensure_analytics_columns(conn) -> None:
         ("explain", "TEXT", "''"),
     ):
         _ensure_column(conn, "analytics", col, ctype, dft)
+    # 错题「已复练」标记（保留历史，仅供错题本/只看错题筛选）
+    _ensure_column(conn, "analytics", "retested", "BOOLEAN", "0")
+    # 遗忘曲线：上次成功复练时间 + 复练阶段（幂等补列）
+    _ensure_column(conn, "analytics", "retested_at", "DATETIME", "NULL")
+    _ensure_column(conn, "analytics", "review_count", "INTEGER", "0")
+
+
+def _ensure_setting_columns(conn) -> None:
+    """幂等地为 settings 表补讲师联网搜索 / 演示模式 / 复习模式列。"""
+    _ensure_column(conn, "settings", "web_search", "BOOLEAN", "1")
+    _ensure_column(conn, "settings", "demo_mode", "BOOLEAN", "0")
+    _ensure_column(conn, "settings", "review_mode", "VARCHAR(16)", "'smart'")
+    # 模型路由策略（云端-边缘混合降级）：auto | local | cloud
+    _ensure_column(conn, "settings", "llm_engine", "VARCHAR(16)", "'auto'")
+
+
+def _ensure_script_quality_columns(conn) -> None:
+    """幂等地为 scripts 表补生成质量评估字段。"""
+    _ensure_column(conn, "scripts", "quality_score", "INTEGER", "NULL")
+    _ensure_column(conn, "scripts", "quality_comment", "TEXT", "''")
+
+
+def _seed_demo_data(db) -> None:
+    """演示数据种子：仅当 documents 为空时为种子用户导入样例文档+剧本+作答记录。"""
+    from . import demo_data
+    from .models import Analytics, Document, Script, User
+
+    if db.scalars(sa.select(Document)).first() is not None:
+        return  # 已有资料，跳过（幂等）
+
+    user = db.scalars(sa.select(User).where(User.username == "demo")).first()
+    if user is None:
+        return  # 种子用户尚未创建（由 _seed_user_id 负责），此处跳过
+
+    doc = Document(
+        user_id=user.id,
+        filename="操作系统基础演示资料.docx",
+        title=demo_data.SAMPLE_DOCUMENT_TITLE,
+        content=demo_data.SAMPLE_DOCUMENT_CONTENT,
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+
+    script = Script(
+        user_id=user.id,
+        document_id=doc.id,
+        title=demo_data.SAMPLE_SCRIPT["title"],
+        source=demo_data.SAMPLE_SCRIPT["source"],
+        chapters=demo_data.SAMPLE_SCRIPT["chapters"],
+    )
+    db.add(script)
+    db.commit()
+    db.refresh(script)
+
+    for (ci, si, qtype, correct, q, yours, ref) in demo_data.SAMPLE_ANALYTICS:
+        db.add(
+            Analytics(
+                user_id=user.id,
+                script_id=script.id,
+                chapter_index=ci,
+                step_index=si,
+                quiz_type=qtype,
+                is_correct=correct,
+                question_text=q,
+                your_answer=yours,
+                correct_answer=ref,
+            )
+        )
+    db.commit()
+    print(
+        f"[seed] 演示样例数据已导入 user_id={user.id} document_id={doc.id} script_id={script.id}"
+    )
 
 
 def _seed_user_id() -> int:
@@ -114,7 +193,14 @@ def run_migrations() -> None:
     try:
         for table in ("documents", "scripts", "progress"):
             _ensure_user_id_column(conn, table, seed_id)
+        _ensure_document_columns(conn)
         _ensure_script_goal_columns(conn)
+        _ensure_script_quality_columns(conn)
         _ensure_analytics_columns(conn)
+        _ensure_setting_columns(conn)
     finally:
         conn.close()
+
+    # 演示样例数据：仅当资料库为空时导入（幂等）
+    with SessionLocal() as db:
+        _seed_demo_data(db)
