@@ -179,7 +179,33 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 /* 模型路由状态徽标 */
 .router-status { color: var(--ink-soft); }
 .badge { border-radius: var(--r-sm); }
-.font-preview { color: var(--ink-soft); }
+
+/* 显示设置「文字显示」：固定高度的大号读出版，只显示当前字号，拖动时不改变尺寸 */
+.font-preview {
+  margin-top: 10px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--accent);
+  background: rgba(255,255,255,.03);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-sm);
+  font-variant-numeric: tabular-nums;
+}
+#font-size-val { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* 字号滑杆：琥珀色调 + 聚焦光圈 */
+.font-box input[type="range"], .group-display input[type="range"] { accent-color: var(--accent); }
+
+/* 弹题类型 与 显示设置 同尺寸：等宽(各占6列) + 等高(拉伸填满网格行) */
+.group-display,
+.group-quiz {
+  grid-column: span 6;
+  align-self: stretch;
+}
 
 /* ============ 8. 播放器 ============ */
 #screen-player { background: #0a0910; }

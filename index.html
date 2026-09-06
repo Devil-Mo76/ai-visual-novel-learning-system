@@ -6,7 +6,7 @@
   <title>AI视觉小说互动式学习系统</title>
   <link rel="stylesheet" href="css/style.css?v=20260907a" />
   <!-- 「暗夜剧场」主题层：在布局源之后加载，覆盖视觉（不影响任何 JS/布局）。回滚：删除本行即可 -->
-  <link rel="stylesheet" href="css/theme.css?v=20260907b" />
+  <link rel="stylesheet" href="css/theme.css?v=20260907c" />
   <link rel="stylesheet" href="css/animations.css" />
   <!-- ECharts 改为按需加载：仅在打开「学习报告」面板时才注入 vendor/echarts.min.js，避免阻塞首屏 -->
 </head>
@@ -204,9 +204,7 @@
         <div>
           <label class="field-label" for="font-size">全局字体大小 <span id="font-size-val">16px</span></label>
           <input type="range" id="font-size" min="12" max="28" step="1" value="16" />
-          <div class="font-preview" id="font-preview">
-            预览：这是一段字体大小预览文字，当前字号将实时反馈。
-          </div>
+          <div class="font-preview" id="font-preview" aria-live="polite">16px</div>
           <div class="settings-actions">
             <button class="btn-primary" id="btn-font-apply">应用</button>
             <button class="btn-primary" id="btn-font-default">默认</button>
@@ -498,7 +496,7 @@
   <script src="js/render.js?v=20260904a"></script>
   <script src="js/streaming.js?v=20260907a"></script>
   <script src="js/lecture.js?v=20260906d"></script>
-  <script src="js/app.js?v=20260907a"></script>
+  <script src="js/app.js?v=20260907c"></script>
   <script src="js/login.js?v=20260906a"></script>
   <script src="js/history.js?v=20260831a"></script>
   <script src="js/report.js?v=20260907b"></script>

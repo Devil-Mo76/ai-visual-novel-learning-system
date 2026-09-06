@@ -670,7 +670,7 @@
       $("font-size").value = px;
       $("font-size-val").textContent = px + "px";
       document.documentElement.style.setProperty("--base-font", px + "px");
-      $("font-preview").style.fontSize = "calc(" + px + "px + 2px)";
+      $("font-preview").textContent = px + "px";   // 仅显示文字大小，预览框高度固定，不随字号自适应
     }
     applyFontSize();   // 载入已保存的字号（此时才调用，声明在前）
     const fontRange = $("font-size");
@@ -678,8 +678,8 @@
     fontRange.addEventListener("input", () => {
       const px = Number(fontRange.value);
       fontVal.textContent = px + "px";                       // 实时数值反馈
-      document.documentElement.style.setProperty("--base-font", px + "px");  // 实时预览
-      $("font-preview").style.fontSize = "calc(" + px + "px + 2px)";
+      document.documentElement.style.setProperty("--base-font", px + "px");  // 实时预览（作用于全局）
+      $("font-preview").textContent = px + "px";             // 预览框仅显示文字大小，不自适应
     });
     $("btn-font-apply").addEventListener("click", () => {    // 应用：持久化字号
       const px = Number(fontRange.value);

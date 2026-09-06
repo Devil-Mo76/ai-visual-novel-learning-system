@@ -44,3 +44,49 @@
 ## ⚠️ 用户须知
 - 主题层只在浏览器加载；**后端无需重启**。若浏览器看到缓存的 CSS，按 Ctrl+F5 强制刷新。
 - 若不喜欢此风格，**只需把 `index.html` 里 `theme.css` 那一行 `<link>` 删掉即可一键回滚**（或 `git reset --hard 4e33563` 回到主题前）。
+---
+
+# 学习报告重构 + 讲师界面重新设计
+
+## 学习报告（dashboard + 独立诊断 + 思维导图修复）
+
+**问题**
+- 报告内嵌大块"薄弱诊断与复习建议"占了大量首屏纵向空间。
+- "知识点掌握程度 / 各章节答题正确率"图表 y/x 轴展示完整章节标题 + 复杂 tooltip，详细文字过多。
+- 思维导图（`_renderTree`）传给 ECharts 的 `data: chapters` 是多个根节点数组。章节一多（脚本常 10~37 章），ECharts 多根布局在 orthogonal LR 下会被横向拉伸、叶子节点溢出画布，**视觉上"没生成"**。
+
+**改了什么**
+- `index.html`：报告面板重排为 dashboard 网格；新增 `btn-report-diagnosis` 独立按钮 + 隐藏的 `report-diagnosis-wrap` 面板；思维导图前置到顶部（独占整行，有更多横向空间）；精简 mastery/bar 标题文字（"🧭 知识点掌握程度" / "📈 各章节答题正确率"）；诊断面板从内嵌改为按需展开。
+- `js/report.js`：
+  - `_renderTree` 改为**单根树**（`rootData = { name: "知识结构", children: knowledgeNodes }`），`initialTreeDepth: 1`，根部自动展开一级知识点，叶子（考点）点击展开。配色改深色适配（根琥珀、连线半透明白、悬停高亮琥珀）。
+  - `_renderMastery` / `_renderBar` 改用 `kw()` 函数压缩标题：按分隔符（·/:/,/、;/()/—）切段，取首段并按 `max=6` 截断；tooltip 只保留关键词 + 百分比（去掉"作答 X 次/答对 X 次"等冗长字数）。
+  - `open()` 改为：报告打开时不再自动拉诊断数据；新增 `toggleDiagnosis(scriptId)` 按需拉取并切换面板展开。
+  - 新增 `_scriptId` / `_diagCache` 状态字段；绑定按钮在 `bind()` 内。
+- `css/theme.css`：新增 `11c 学习报告面板` 整段（深色 dashboard 网格、`btn-report-diag` 琥珀描边、诊断/掌握度卡片暗玻璃样式）。
+
+**验证**
+- 进入播放器打开学习报告：思维导图正常渲染（**树有根结点 + 6 个知识点 #1~#6 横向铺开**）。
+- 点击「🔍 薄弱诊断与复习建议」：面板展开，渲染 6 项诊断（序号琥珀徽章、状态 chip、掌握度琥珀进度条、行动建议、前置依赖、推荐复习顺序 chip）。
+- 「知识点掌握程度」与「各章节答题正确率」图表标签只保留短关键词（"操作系统概述/进程管理/虚拟内存管理..."），无长字符串堆叠。
+- 0 JS 报错。
+
+## 讲师界面重新设计
+
+**问题**
+- 讲师模式的输入框（`.lecture-input-row .q-input`）min-height 仅 48px，按 Enter 提问的撰写空间太小。
+- 整体讲师面板复用 `#dialog-box`，没有专属的"讲师一对一"视觉感。
+
+**改了什么**（仅在 `theme.css` 中新增 `11d 讲师一对一辅导界面`）
+- `#dialog-box.lecture-mode` 改为深玻璃大面板（深色渐变 + 1px 琥珀描边 + 大阴影）。
+- 讲师名牌 `dialog-name` 保持琥珀高亮（强调"讲师"身份）。
+- `.lecture-input-row .q-input` **min-height 48px → 76px**，max-height 180px，padding 16×18px，font-size 增大；聚焦时琥珀光圈。
+- `#btn-lecture-send` 用 `align-self: stretch` 自动撑高匹配输入框高度（实测 76px）。
+- `#btn-lecture-close` 暗玻璃风格，跟随整体暗夜剧场。
+- 聊天气泡（若展开独立聊天面板）改暗玻璃 + 琥珀左边条。
+
+**验证**
+- 进入讲师模式后实测：input 渲染高度 **76px**（min-height 生效），输入框宽度 1086px，提问按钮同高 76px，0 JS 报错。
+
+## 提醒
+- `theme.css?v=20260907a → b`、`report.js?v=20260907a → b` 版本号已 bump，浏览器按 **Ctrl+F5** 强制刷新以加载新版。
+- 后端无需重启。
