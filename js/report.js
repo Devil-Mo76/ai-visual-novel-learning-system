@@ -46,6 +46,17 @@
   /* 低于该阈值判为「需要复习」的章节（柱状图标记为红色） */
   const LOW_RATE = 60;
 
+  /* 长标题压缩为「大概的关键词」：优先在分隔符处截断，否则取前若干字 */
+  function kw(t, max = 6) {
+    if (!t) return "";
+    const s = String(t).trim();
+    const cut = s.split(/[·:：,，、;；|/\\()（）-]\s*/).filter(Boolean);
+    let seg = cut[0] || s;
+    // 单段太长再按整段截断
+    seg = seg.length > max ? seg.slice(0, max) + "…" : seg;
+    return seg;
+  }
+
   const Report = {
     _masteryChart: null,
     _barChart: null,
@@ -53,10 +64,13 @@
     _timeChart: null,
     _typeChart: null,
     _coverageChart: null,
+    _diagCache: null,
+    _scriptId: 0,
 
     /* —— 打开面板：拉取数据并渲染两张图 —— */
     async open(scriptId) {
       try { await ensureEcharts(); } catch (e) { /* echarts 缺失时下方各图自行兜底 */ }
+      this._scriptId = scriptId;
       const desc = $("report-desc");
       const stats = $("report-stats");
       const empty = $("report-empty");
@@ -64,18 +78,18 @@
       empty.classList.add("hidden");
       desc.textContent = "加载中…";
 
+      // 重置：薄弱诊断面板收起，等用户点按钮再展开
+      this._diagCache = null;
+      const diagWrap = $("report-diagnosis-wrap");
+      if (diagWrap) diagWrap.classList.add("hidden");
+      const diagBtn = $("btn-report-diagnosis");
+      const diagHint = $("report-diag-hint");
+      if (diagBtn) diagBtn.disabled = false;
+      if (diagHint) diagHint.textContent = "查看薄弱知识点、掌握度与推荐复习顺序";
+
       try {
         const data = await Api.analyticsOverview(scriptId);
         $("report-modal").classList.remove("hidden");
-
-        // 学情诊断始终渲染（即使无作答，也给出"去学习/薄弱"建议）
-        let diag = null;
-        try {
-          diag = await Api.analyticsDiagnosis(scriptId);
-        } catch {
-          diag = null;
-        }
-        this._renderDiagnosis(diag);
 
         // 思维导图始终渲染：组织「资料 → 知识点 → 考点」的知识结构（不含角色对话），
         // 不依赖作答记录，即使尚无答题数据也展示学习资料的知识结构。
@@ -122,14 +136,50 @@
       }
     },
 
+    /* —— 切换「薄弱诊断与复习建议」面板（首次点开才拉取）—— */
+    async toggleDiagnosis(scriptId) {
+      const wrap = $("report-diagnosis-wrap");
+      const btn = $("btn-report-diagnosis");
+      const hint = $("report-diag-hint");
+      if (!wrap) return;
+
+      // 面板当前展开 → 收起
+      if (!wrap.classList.contains("hidden")) {
+        wrap.classList.add("hidden");
+        if (btn) btn.classList.remove("active");
+        if (hint) hint.textContent = "查看薄弱知识点、掌握度与推荐复习顺序";
+        return;
+      }
+
+      // 展开：首次需要拉取诊断数据
+      if (btn) btn.classList.add("active");
+      if (hint) hint.textContent = "正在加载学情诊断…";
+      if (!this._diagCache) {
+        let diag = null;
+        try {
+          diag = await Api.analyticsDiagnosis(scriptId);
+        } catch {
+          diag = null;
+        }
+        this._diagCache = diag;
+      }
+      this._renderDiagnosis(this._diagCache);
+      wrap.classList.remove("hidden");
+      if (hint) hint.textContent = this._diagEmpty() ? "暂无足够的作答数据用于诊断，继续学习后可查看" : "";
+    },
+
+    _diagEmpty() {
+      const d = this._diagCache;
+      return !d || !d.points || !d.points.length;
+    },
+
     /* —— 关闭面板：隐藏 + 释放图表实例（防止重复打开堆积）—— */
     close() {
       $("report-modal").classList.add("hidden");
       this._dispose();
     },
 
-    /* —— 知识点掌握程度：横向条形，全部知识点按掌握度降序，章节多也可完整浏览 ——
-     * 替换原雷达图（章节一多雷达就挤成一团）。未作答章节灰色占位，不误读为 0。 */
+    /* —— 知识点掌握程度：横向条形，仅标注关键词（去掉冗长文字）—— */
     _renderMastery(chapters) {
       const el = $("report-mastery");
       this._disposeMastery(el);
@@ -148,7 +198,7 @@
 
       // 按掌握度降序（未作答排最后）
       const ordered = chapters.slice().sort((a, b) => (b.total > 0 ? b.rate : -1) - (a.total > 0 ? a.rate : -1));
-      const names = ordered.map((c) => c.title);
+      const names = ordered.map((c) => kw(c.title));      // 只留关键词
       const values = ordered.map((c) => c.rate);
       const colors = ordered.map((c) => (c.total > 0 && c.rate < LOW_RATE ? BAD : ACCENT));
       const hasData = ordered.some((c) => c.total > 0);
@@ -159,26 +209,26 @@
           axisPointer: { type: "shadow" },
           backgroundColor: TOOLTIP_BG,
           borderColor: "transparent",
-          textStyle: { color: "#fff" },
+          textStyle: { color: "#fff", fontSize: 12 },
           formatter: (params) => {
             const row = ordered[params[0].dataIndex];
-            return `${row.title}<br/>作答 ${row.total} 次 / 答对 ${row.correct} 次<br/>掌握度 <b>${row.total > 0 ? row.rate + "%" : "未作答"}</b>`;
+            return `${kw(row.title)} · ${row.total > 0 ? row.rate + "%" : "未作答"}`;
           },
         },
-        grid: { left: 10, right: 60, top: 20, bottom: 30, containLabel: true },
+        grid: { left: 8, right: 54, top: 12, bottom: 20, containLabel: true },
         xAxis: {
           type: "value",
           min: 0,
           max: 100,
-          axisLabel: { color: INK_SOFT, formatter: "{value}%" },
-          splitLine: { lineStyle: { color: GRID } },
+          axisLabel: { color: INK_SOFT, fontSize: 11, formatter: "{value}" },
+          splitLine: { lineStyle: { color: GRID, opacity: .5 } },
         },
         yAxis: {
           type: "category",
           data: names,
           inverse: true,
-          axisLabel: { color: INK, fontSize: 12, width: 120, overflow: "truncate" },
-          axisLine: { lineStyle: { color: GRID } },
+          axisLabel: { color: INK, fontSize: 12, width: 130, overflow: "truncate" },
+          axisLine: { show: false },
           axisTick: { show: false },
         },
         series: [
@@ -187,9 +237,11 @@
             type: "bar",
             data: values.map((v, i) => ({
               value: v,
-              itemStyle: { color: hasData && colors[i] || "#d8d5cd" },
+              itemStyle: { color: hasData && colors[i] || "rgba(215,210,205,0.35)" },
             })),
-            barMaxWidth: 18,
+            barMaxWidth: 16,
+            showBackground: true,
+            backgroundStyle: { color: "rgba(255,255,255,0.04)" },
             label: {
               show: true,
               position: "right",
@@ -197,7 +249,7 @@
               fontSize: 11,
               formatter: (p) => {
                 const row = ordered[p.dataIndex];
-                return row.total > 0 ? p.value + "%" : "未作答";
+                return row.total > 0 ? p.value + "%" : "·";
               },
             },
           },
@@ -205,7 +257,7 @@
       });
     },
 
-    /* —— 柱状图：各章正确率（正确数/总尝试数），低值章节标红 —— */
+    /* —— 柱状图：各章正确率，仅标注关键词 —— */
     _renderBar(chapters) {
       const el = $("report-bar");
       this._disposeBar(el);
@@ -218,7 +270,7 @@
       const chart = echarts.init(el);
       this._barChart = chart;
 
-      const names = chapters.map((c) => c.title);
+      const names = chapters.map((c) => kw(c.title));
       const rates = chapters.map((c) => c.rate);
       const colors = chapters.map((c) => (c.total > 0 && c.rate < LOW_RATE ? BAD : ACCENT));
 
@@ -228,38 +280,40 @@
           axisPointer: { type: "shadow" },
           backgroundColor: TOOLTIP_BG,
           borderColor: "transparent",
-          textStyle: { color: "#fff" },
+          textStyle: { color: "#fff", fontSize: 12 },
           formatter: (params) => {
             const row = chapters[params[0].dataIndex];
-            const needReview = row.total > 0 && row.rate < LOW_RATE;
-            return `${row.title}<br/>答对 ${row.correct} / 共 ${row.total} 次<br/>正确率 <b>${row.rate}%</b>${needReview ? "　⚠ 建议复习" : ""}`;
+            const need = row.total > 0 && row.rate < LOW_RATE;
+            return `${kw(row.title)} · ${row.rate}%${need ? " · 建议复习" : ""}`;
           },
         },
-        grid: { left: 46, right: 20, top: 20, bottom: 74 },
-        // 章节多时可通过下方滑块/滚轮平移缩放，保证「全部章节」都能查看
+        grid: { left: 8, right: 16, top: 22, bottom: 66 },
         dataZoom: [
-          { type: "inside", xAxisIndex: 0, minValueSpan: 6 },
-          { type: "slider", xAxisIndex: 0, bottom: 8, height: 18, start: 0, end: 100 },
+          { type: "inside", xAxisIndex: 0 },
+          { type: "slider", xAxisIndex: 0, bottom: 10, height: 16, start: 0, end: 100,
+            borderColor: "transparent", backgroundColor: "rgba(255,255,255,0.03)",
+            fillerColor: "rgba(242,160,82,0.12)", dataBackground: { lineStyle:{color:"rgba(255,255,255,0.1)"} } },
         ],
         xAxis: {
           type: "category",
           data: names,
           axisLabel: {
             color: INK_SOFT,
-            fontSize: 11,
-            rotate: names.length > 6 ? 30 : 0,   // 章节多时斜排防止重叠
+            fontSize: 10,
+            rotate: names.length > 6 ? 32 : 0,
             interval: 0,
             hideOverlap: true,
+            formatter: (v) => (v.length > 4 ? v.slice(0, 4) + "…" : v),
           },
-          axisLine: { lineStyle: { color: GRID } },
+          axisLine: { show: false },
           axisTick: { show: false },
         },
         yAxis: {
           type: "value",
           min: 0,
           max: 100,
-          axisLabel: { color: INK_SOFT, formatter: "{value}%" },
-          splitLine: { lineStyle: { color: GRID } },
+          axisLabel: { color: INK_SOFT, fontSize: 10 },
+          splitLine: { lineStyle: { color: GRID, opacity: .5 } },
         },
         series: [
           {
@@ -267,22 +321,18 @@
             type: "bar",
             data: chapters.map((c, i) => ({
               value: c.rate,
-              // 无作答的章节显示为浅灰占位，不误读为「0 正确率」
-              itemStyle: { color: c.total > 0 ? colors[i] : "#d8d5cd" },
+              itemStyle: {
+                color: c.total > 0 ? colors[i] : "rgba(215,210,205,0.3)",
+                borderRadius: [3, 3, 0, 0],
+              },
             })),
-            barMaxWidth: 44,
-            // 柱端 2px 白描边：让相邻柱之间留出可读间隔
-            itemStyle: {
-              borderRadius: [4, 4, 0, 0],
-              borderColor: "#f4f1ea",
-              borderWidth: 2,
-            },
+            barMaxWidth: 26,
             label: {
               show: true,
               position: "top",
               color: INK,
-              fontSize: 11,
-              formatter: (p) => (p.value > 0 ? p.value + "%" : ""),
+              fontSize: 10,
+              formatter: (p) => (p.value > 0 ? p.value + "" : ""),
             },
           },
         ],
@@ -309,70 +359,79 @@
       // —— 从章节的弹题中提取「考点」，构筑 资料 → 知识点 → 考点 的知识结构（不含角色对话）——
       const knowledgeLeaves = (ch) => {
         const q = (ch.steps || []).find((s) => s.type === "question");
-        if (!q) return [{ name: "（该知识点未设考点）", value: "考点" }];
+        if (!q) return [{ name: "未设考点", value: "考点" }];
         switch (q.quiz_type) {
           case "short":
-            return (q.reference_points || []).map((p) => ({ name: `考核：${String(p).slice(0, 22)}`, value: "考点" }));
+            return (q.reference_points || []).map((p) => ({ name: kw(String(p), 10), value: "考点" }));
           case "fill":
-            return [{ name: `填词考点：${String(q.answer_text || "").slice(0, 22)}`, value: "考点" }];
+            return [{ name: kw(String(q.answer_text || ""), 10), value: "考点" }];
           case "choice": {
             const correct = (q.choices && q.choices[q.answer]) ? String(q.choices[q.answer]) : null;
-            if (correct) return [{ name: `重点：${correct.slice(0, 22)}`, value: "考点" }];
-            return (q.choices || []).map((c) => ({ name: `要点：${String(c).slice(0, 18)}`, value: "考点" }));
+            if (correct) return [{ name: kw(correct, 10), value: "考点" }];
+            return (q.choices || []).slice(0, 2).map((c) => ({ name: kw(String(c), 9), value: "考点" }));
           }
           default:
-            return [{ name: (q.text || "考点").slice(0, 24), value: "考点" }];
+            return [{ name: kw(q.text || "考点", 10), value: "考点" }];
         }
       };
 
-      // 根节点：资料/剧本标题；每章一个「知识点」子节点；其下的「考点」作为叶子
-      const chapters = scriptChapters.map((ch) => ({
-        name: ch.title || "未命名知识点",
+      // 章节结点（知识点），每章一个关键词标题
+      const knowledgeNodes = scriptChapters.map((ch, i) => ({
+        name: `#${i + 1} ${kw(ch.title || "未命名", 10)}`,
         children: knowledgeLeaves(ch),
       }));
+
+      // 统一挂到一个虚拟根结点下 → 让 ECharts 以“一棵树”正确布局
+      // （若把多章平铺成多个根，章节一多会横向拉出画布、几乎不可读）
+      const rootData = {
+        name: "知识结构",
+        itemStyle: { color: "#f2a052" },   // 根结点用琥珀强调
+        children: knowledgeNodes,
+      };
 
       chart.setOption({
         tooltip: {
           trigger: "item",
           triggerOn: "mousemove",
-          backgroundColor: "#2a2a35",
-          borderColor: "transparent",
-          textStyle: { color: "#fff" },
+          backgroundColor: "#1b1a24",
+          borderColor: "rgba(242,239,232,0.15)",
+          textStyle: { color: "#f2efe8", fontSize: 12 },
           formatter: (p) => {
             const d = p.data;
-            return d.value
-              ? `<b>${d.name}</b><br/>${d.value}`
-              : `<b>${p.name}</b><br/>知识点`;
+            return (d && d.value) ? `${d.name}` : `<b>${p.name}</b>`;
           },
         },
         series: [
           {
             type: "tree",
-            data: chapters,
-            left: 30,
-            right: 80,
-            top: 30,
-            bottom: 30,
+            data: [rootData],          // 单根（关键修复）
+            left: 90,
+            right: 40,
+            top: 16,
+            bottom: 24,
             symbol: "circle",
-            symbolSize: 8,
+            symbolSize: 7,
             layout: "orthogonal",
-            orient: "LR",              // 从左往右展开：章节在左，步骤叶子向右
-            initialTreeDepth: 2,
-            roam: true,                // 可缩放/拖动，章节多时便于查看
+            orient: "LR",              // 从左往右：根在左，知识点/考点向右
+            initialTreeDepth: 1,       // 默认只展开到知识点一层，避免几十章全展开爆炸
+            roam: true,                // 可缩放/拖动
             expandAndCollapse: true,   // 点击节点折叠/展开
+            color: ["#f2a052", "#9b8bd8", "#6f7fd8", "#5fb7ce"],  // 顶层知识点按序取色
             label: {
-              position: "top",
+              position: "left",
               verticalAlign: "middle",
-              align: "left",
+              align: "right",
+              distance: 8,
               fontSize: 12,
-              color: "#2a2a35",
+              color: "#d8d3e6",
             },
-            lineStyle: {
-              color: "#d8d5cd",
-              width: 1.5,
+            leaves: {
+              label: { position: "right", verticalAlign: "middle", align: "left", fontSize: 11, color: "#8f8aa2" },
             },
-            itemStyle: {
-              color: "#7c6bd5",
+            lineStyle: { color: "rgba(242,239,232,0.18)", width: 1, curveness: 0.5 },
+            emphasis: {
+              focus: "descendant",
+              lineStyle: { color: "rgba(242,160,82,0.7)" },
             },
           },
         ],
@@ -621,6 +680,14 @@
         });
       }
       $("btn-report-close").addEventListener("click", () => Report.close());
+      const diagBtn = $("btn-report-diagnosis");
+      if (diagBtn) {
+        diagBtn.addEventListener("click", () => {
+          const id = Report._scriptId || (typeof Modes !== "undefined" && Modes.scriptId) || 0;
+          if (!id) { Render.toast("请先进入学习再查看薄弱诊断。"); return; }
+          Report.toggleDiagnosis(id);
+        });
+      }
     },
   };
 

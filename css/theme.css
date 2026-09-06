@@ -348,6 +348,133 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .user-menu-item { color: var(--ink-soft); }
 .user-menu-item:hover { background: var(--accent-soft); color: var(--accent-text); }
 
+/* ============ 11c. 学习报告面板（dashboard） ============ */
+#report-modal .report-card {
+  width: 96vw;
+  max-width: 1500px;
+  height: 92vh;
+  max-height: 92vh;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-auto-rows: min-content;
+  gap: 14px 16px;
+  align-items: start;
+  align-content: start;
+  background: linear-gradient(180deg, #16131f, #0f0d16);
+}
+/* 报告操作条（薄弱诊断入口）独占整行 */
+.report-toolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+.btn-report-diag {
+  border: 1px solid rgba(242,160,82,.5);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  letter-spacing: .04em;
+}
+.btn-report-diag:hover { background: var(--accent); color: #17100a; }
+.btn-report-diag.active { background: var(--accent); color: #17100a; box-shadow: 0 0 0 3px var(--accent-soft); }
+.report-diag-hint { font-size: 12px; color: var(--ink-soft); }
+
+/* 思维导图横跨整行，给树留出横向空间 */
+.report-card .tree-wrap { grid-column: 1 / -1; }
+.tree-wrap .report-tree { height: 360px; }
+.report-chart-wrap { margin-bottom: 0; min-width: 0; }
+
+/* 诊断面板 */
+.diagnosis-wrap { grid-column: 1 / -1; }
+.report-diagnosis { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
+.diag-item { background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: var(--r-md); }
+.diag-title, .diag-action { color: var(--ink); }
+.diag-summary, .diag-prereq, .diag-mastery-num { color: var(--ink-soft); }
+.diag-summary b, .diag-order { color: var(--accent); }
+.diag-num { background: var(--accent); color: #17100a; }
+.diag-mastery-track { background: rgba(255,255,255,.07); }
+.diag-mastery-fill { background: linear-gradient(90deg, #f6a95c, var(--accent-dark)); }
+.diag-due { background: rgba(255,122,107,.16); color: #ffb0a5; }
+.diag-weak { background: rgba(242,160,82,.16); color: #f7c489; }
+.diag-untouched { background: rgba(255,255,255,.06); color: var(--ink-soft); }
+.diag-ok { background: rgba(95,206,139,.14); color: #8ce0ad; }
+
+/* ============ 11d. 讲师一对一辅导界面（暗夜剧场 · 大号输入区） ============ */
+/* 讲师模式对话栏：暗玻璃大面板 */
+#dialog-box.lecture-mode {
+  background: linear-gradient(180deg, rgba(18,16,26,.96), rgba(12,11,18,.97));
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-3);
+}
+/* 讲师身份名牌：琥珀底强调 */
+#dialog-box.lecture-mode .dialog-name {
+  background: var(--accent); color: #17100a;
+}
+#dialog-box.lecture-mode .dialog-text {
+  font-size: calc(var(--base-font) + 3px); line-height: 1.9; color: var(--ink);
+}
+/* 讲师会话区分隔与留白 */
+#dialog-box.lecture-mode .lecture-session {
+  margin-top: 12px;
+  border-top: 1px solid rgba(242,239,232,.1);
+  padding-top: 14px;
+  gap: 12px;
+}
+/* 大号输入区：更高的输入框 + 更舒适的间距 */
+.lecture-input-row {
+  gap: 12px;
+  padding: 6px 0 0;
+}
+.lecture-input-row .q-input {
+  min-height: 76px;
+  max-height: 180px;
+  padding: 16px 18px;
+  font-size: calc(var(--base-font) + 2px);
+  line-height: 1.7;
+  border-radius: 14px;
+  background: rgba(8,7,12,.72);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+}
+.lecture-input-row .q-input::placeholder { color: rgba(183,177,194,.55); }
+.lecture-input-row .q-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+/* 提问按钮：与更高输入框对齐（撑满输入行高度） */
+#dialog-box.lecture-mode #btn-lecture-send {
+  align-self: stretch;
+  min-height: 76px;
+  padding: 0 30px;
+  border-radius: 14px;
+  font-size: 16px;
+  letter-spacing: .1em;
+}
+#dialog-box.lecture-mode #btn-lecture-close {
+  border-color: var(--line-strong);
+  background: transparent; color: var(--ink-soft);
+  border-radius: 12px; padding: 10px 20px;
+}
+#dialog-box.lecture-mode #btn-lecture-close:hover {
+  border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft);
+}
+/* 讲师聊天记录（若出现独立面板时保持暗玻璃气泡） */
+.lecture-chat .lec-tutor, .lecture-history-bubbles .lec-tutor {
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  color: var(--ink);
+  box-shadow: none;
+}
+.lecture-chat .lec-user, .lecture-history-bubbles .lec-user {
+  background: var(--accent); color: #17100a;
+  box-shadow: 0 3px 12px rgba(242,160,82,.2);
+}
+
 /* ============ 12. 动效降级 ============ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

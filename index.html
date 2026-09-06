@@ -6,7 +6,7 @@
   <title>AI视觉小说互动式学习系统</title>
   <link rel="stylesheet" href="css/style.css?v=20260907a" />
   <!-- 「暗夜剧场」主题层：在布局源之后加载，覆盖视觉（不影响任何 JS/布局）。回滚：删除本行即可 -->
-  <link rel="stylesheet" href="css/theme.css?v=20260907a" />
+  <link rel="stylesheet" href="css/theme.css?v=20260907b" />
   <link rel="stylesheet" href="css/animations.css" />
   <!-- ECharts 改为按需加载：仅在打开「学习报告」面板时才注入 vendor/echarts.min.js，避免阻塞首屏 -->
 </head>
@@ -201,7 +201,7 @@
       <!-- 显示设置 -->
       <div class="settings-group group-display">
         <div class="group-title">🖥 显示设置</div>
-        <div class="font-box">
+        <div>
           <label class="field-label" for="font-size">全局字体大小 <span id="font-size-val">16px</span></label>
           <input type="range" id="font-size" min="12" max="28" step="1" value="16" />
           <div class="font-preview" id="font-preview">
@@ -217,7 +217,7 @@
       <!-- 弹题类型 -->
       <div class="settings-group group-quiz">
         <div class="group-title">🧩 弹题类型</div>
-        <div class="quiz-opts">
+        <div>
           <label class="field-label">弹题类型（下次生成剧本时生效）</label>
           <label class="quiz-check"><input type="checkbox" id="qtype-choice" checked /> 选择题</label>
           <label class="quiz-check"><input type="checkbox" id="qtype-fill" /> 填空题</label>
@@ -235,7 +235,7 @@
           <button class="btn-primary" id="btn-router-status">刷新状态</button>
         </div>
 
-        <div class="router-status" id="router-status">点击「刷新状态」查看当前路由策略与引擎可用性。</div>
+        <div id="router-status">点击「刷新状态」查看当前路由策略与引擎可用性。</div>
 
         <div class="router-test">
           <label class="field-label">单次连通自测</label>
@@ -414,48 +414,50 @@
         <div class="stat-tile"><div class="stat-num" id="stat-rate">0%</div><div class="stat-label">总体正确率</div></div>
       </div>
 
-      <!-- 知识点掌握程度（横向，全部知识点按掌握度排序） -->
-      <div class="report-chart-wrap">
-        <div class="report-chart-title">🧭 知识点掌握程度（全部知识点，按掌握度排序）</div>
-        <div id="report-mastery" class="report-echart"></div>
+      <!-- 操作条：薄弱诊断入口（独立按钮，点击展开） -->
+      <div class="report-toolbar">
+        <button class="btn-primary btn-report-diag" id="btn-report-diagnosis">🔍 薄弱诊断与复习建议</button>
+        <span class="report-diag-hint" id="report-diag-hint">查看薄弱知识点、掌握度与推荐复习顺序</span>
       </div>
-
-      <!-- 柱状图 -->
-      <div class="report-chart-wrap">
-        <div class="report-chart-title">📈 各章节答题正确率（正确数 / 总尝试数）</div>
-        <div id="report-bar" class="report-echart"></div>
+      <div class="report-chart-wrap diagnosis-wrap hidden" id="report-diagnosis-wrap">
+        <div class="report-chart-title">🧭 薄弱诊断与复习建议（掌握度 / 前置依赖 / 自适应推荐）</div>
+        <div id="report-diagnosis" class="report-diagnosis"></div>
       </div>
 
       <!-- 思维导图：由剧本 chapters → 章节 → 步骤 生成知识点树 -->
-      <div class="report-chart-wrap">
-        <div class="report-chart-title">🧠 思维导图（本剧本知识点结构）</div>
+      <div class="report-chart-wrap tree-wrap">
+        <div class="report-chart-title">🧠 思维导图（本剧本知识点结构，可拖拽缩放）</div>
         <div id="report-tree" class="report-echart report-tree"></div>
+      </div>
+
+      <!-- 知识点掌握程度（横向条形，仅标注关键词） -->
+      <div class="report-chart-wrap">
+        <div class="report-chart-title">🧭 知识点掌握程度</div>
+        <div id="report-mastery" class="report-echart"></div>
+      </div>
+
+      <!-- 各章节答题正确率（柱状，仅标注关键词） -->
+      <div class="report-chart-wrap">
+        <div class="report-chart-title">📈 各章节答题正确率</div>
+        <div id="report-bar" class="report-echart"></div>
       </div>
 
       <!-- 作答次数时间线（按天，折线/柱状） -->
       <div class="report-chart-wrap">
-        <div class="report-chart-title">📅 每日作答趋势（作答量 + 正确率）</div>
+        <div class="report-chart-title">📅 每日作答趋势</div>
         <div id="report-time" class="report-echart"></div>
       </div>
 
       <!-- 题型分布（按题型分类正确率） -->
       <div class="report-chart-wrap">
-        <div class="report-chart-title">🧩 题型作答分布（选择 / 填空 / 简答）</div>
+        <div class="report-chart-title">🧩 题型作答分布</div>
         <div id="report-type" class="report-echart"></div>
       </div>
 
       <!-- 考点覆盖度（已作答章节 / 全部章节） -->
       <div class="report-chart-wrap">
-        <div class="report-chart-title">🎯 考点覆盖度（已作答章节数 / 总章节数）</div>
+        <div class="report-chart-title">🎯 考点覆盖度</div>
         <div id="report-coverage" class="report-echart"></div>
-      </div>
-
-      <!-- 薄弱诊断与复习建议（学情诊断 + 自适应推荐，独占整行） -->
-      <div class="report-chart-wrap diagnosis-wrap">
-        <div class="report-chart-title">🧭 薄弱诊断与复习建议（掌握度 / 前置依赖 / 自适应推荐）</div>
-        <div id="report-diagnosis" class="report-diagnosis">
-          <div style="color:var(--ink-soft);text-align:center;padding-top:20px">加载中…</div>
-        </div>
       </div>
 
       <div class="report-empty hidden" id="report-empty">暂未检测到答题记录。先去学习并作答，学习报告会在这里汇总你的掌握情况。</div>
@@ -499,7 +501,7 @@
   <script src="js/app.js?v=20260907a"></script>
   <script src="js/login.js?v=20260906a"></script>
   <script src="js/history.js?v=20260831a"></script>
-  <script src="js/report.js?v=20260907a"></script>
+  <script src="js/report.js?v=20260907b"></script>
   <script src="js/wrongbook.js?v=20260905b"></script>
 </body>
 </html>
