@@ -513,3 +513,180 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 @media (max-width: 620px) {
   .screen-header h2 { letter-spacing: .12em; }
 }
+
+/* ============ 14. 白天 / 黑夜切换按钮（两态通用） ============ */
+.theme-toggle-btn {
+  position: absolute;
+  z-index: 10;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line-strong);
+  background: rgba(20,18,28,.72);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0,0,0,.28);
+  transition: background .18s ease, border-color .18s ease, transform .1s;
+}
+#btn-theme-menu { bottom: 18px; left: 18px; }
+#btn-theme-player { bottom: 74px; left: 14px; }   /* 播放器底部让开 64px 控制栏 */
+.theme-toggle-btn:hover { background: var(--accent); color: #17100a; border-color: var(--accent); }
+.theme-toggle-btn:active { transform: scale(.95); }
+.theme-toggle-btn .tt-emoji { font-size: 16px; line-height: 1; }
+.theme-toggle-btn .tt-label { letter-spacing: .06em; }
+
+/* 白天主题下按钮反转为浅玻璃（文字跟随令牌） */
+[data-theme="light"] .theme-toggle-btn {
+  background: rgba(255,255,255,.72);
+  color: #1a1620;
+  border-color: rgba(20,18,26,.2);
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+[data-theme="light"] .theme-toggle-btn:hover { background: var(--accent); color: #17100a; }
+
+/* ═══════════════════════════════════════════════════════════════
+ * [data-theme="light"] — 白天主题（白底 + 黑字），与暗夜相反
+ * 覆盖 theme.css 顶部写死的深色表面；令牌级翻转 + 表面级翻转。
+ * ═══════════════════════════════════════════════════════════════ */
+[data-theme="light"] {
+  --ink: #1b1820;
+  --ink-soft: #55505f;
+  --line: rgba(27,24,32,.16);
+  --line-strong: rgba(27,24,32,.26);
+  --panel: #ffffff;
+  --panel-2: #f4f2f6;
+  --surface-glass: rgba(255,255,255,.80);
+  --accent-text: #241a10;
+  --accent-soft: rgba(242,160,82,.16);
+  --backdrop-glow-1: rgba(124,107,213,.10);
+  --backdrop-glow-2: rgba(242,160,82,.08);
+}
+
+/* 全局底与滚动条反白 */
+[data-theme="light"] html, [data-theme="light"] body { background: #f2f0f4; color: var(--ink); }
+[data-theme="light"] *::-webkit-scrollbar-track { background: rgba(40,35,55,.08); }
+[data-theme="light"] *::-webkit-scrollbar-thumb { background: rgba(120,110,150,.4); }
+[data-theme="light"] .modal { background: rgba(20,16,28,.4); }
+
+/* 主菜单：白底氛围（白天主题下不再叠加氛围图，避免亮背景压字） */
+[data-theme="light"] #screen-menu {
+  background:
+    radial-gradient(80rem 60rem at 78% -10%, rgba(242,160,82,.14), transparent 60%),
+    radial-gradient(70rem 52rem at -6% 20%, rgba(124,107,213,.12), transparent 60%),
+    linear-gradient(160deg, #f8f6fb 0%, #f1eef5 55%, #ece8f0 100%);
+}
+[data-theme="light"] .menu-backdrop { display: none; }   /* 白天关掉背景图，提亮主菜单 */
+[data-theme="light"] .menu-title { color: #1a1620; text-shadow: none; }
+[data-theme="light"] .menu-title::before { background: linear-gradient(90deg, var(--accent), transparent); }
+[data-theme="light"] .menu-subtitle { color: #5f5a68; }
+[data-theme="light"] .menu-btn { color: #241f2e; border-bottom-color: rgba(27,24,32,.14); }
+[data-theme="light"] .menu-btn:hover { color: #14101a; border-bottom-color: var(--accent); }
+[data-theme="light"] .menu-btn::after { background: var(--accent); }
+[data-theme="light"] .menu-status { color: #6a6574; }
+
+/* 屏头 + 返回/幽灵按钮 */
+[data-theme="light"] .screen-header { background: rgba(255,255,255,.9); border-bottom-color: rgba(27,24,32,.14); }
+[data-theme="light"] .screen-header h2 { color: #1a1620; }
+[data-theme="light"] .btn-back, [data-theme="light"] .btn-ghost { color: #4a4654; border-color: rgba(27,24,32,.2); }
+[data-theme="light"] .btn-back:hover, [data-theme="light"] .btn-ghost:hover { color: #14101a; background: var(--accent-soft); border-color: var(--accent); }
+
+/* 开始学习 / 设置屏背景：浅遮罩保留氛围图 */
+[data-theme="light"] #screen-library, [data-theme="light"] #screen-settings {
+  background:
+    linear-gradient(rgba(255,255,255,.72), rgba(255,255,255,.72)),
+    url("../images/前端背景/前端背景.png");
+  background-size: cover; background-position: center;
+}
+
+/* 资料库：白玻璃卡片 + 文档条目 */
+[data-theme="light"] .upload-card, [data-theme="light"] .library-card {
+  background: rgba(255,255,255,.86); border-color: rgba(27,24,32,.14);
+  box-shadow: 0 10px 30px rgba(20,16,28,.08);
+}
+[data-theme="light"] .upload-title, [data-theme="light"] .library-title, [data-theme="light"] .doc-name { color: #1a1620; }
+[data-theme="light"] .upload-hint, [data-theme="light"] .library-subtitle, [data-theme="light"] .goal-hint, [data-theme="light"] .field-hint,
+[data-theme="light"] .doc-meta, [data-theme="light"] .doc-preview { color: #5a5563; }
+[data-theme="light"] .doc-item { background: #fff; border-color: rgba(27,24,32,.14); }
+[data-theme="light"] .doc-item:hover { background: #faf9ff; border-color: rgba(27,24,32,.22); }
+[data-theme="light"] .doc-item.doc-selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset, 0 6px 18px rgba(242,160,82,.18); background: linear-gradient(180deg, rgba(242,160,82,.10), #fff); }
+[data-theme="light"] .doc-tool { color: #4a4654; border-color: rgba(27,24,32,.2); background: #f5f2f8; }
+[data-theme="light"] .doc-del { border-color: rgba(198,40,40,.35); background: #fdf2f2; color: #b54545; }
+[data-theme="light"] .goal-box, [data-theme="light"] .doc-generate-bar { background: #f7f3f6; border-color: rgba(27,24,32,.12); }
+[data-theme="light"] .goal-textarea, [data-theme="light"] .gen-select, [data-theme="light"] .field-input,
+[data-theme="light"] .q-input, [data-theme="light"] .lecture-input-row .q-input { background: #fff; color: #1a1620; border-color: rgba(27,24,32,.24); }
+[data-theme="light"] .goal-textarea::placeholder, [data-theme="light"] .field-input::placeholder, [data-theme="light"] .q-input::placeholder { color: #a29cab; }
+[data-theme="light"] .drop-area { background: #fff; border-color: rgba(27,24,32,.26); }
+[data-theme="light"] .drop-area:hover, [data-theme="light"] .drop-area.drag-hover { border-color: var(--accent); background: rgba(242,160,82,.08); }
+[data-theme="light"] .drop-text { color: #5a5563; }
+[data-theme="light"] .doc-empty, [data-theme="light"] .gen-label, [data-theme="light"] .field-label { color: #3a3644; }
+
+/* 设置组 + 弹题/字体 */
+[data-theme="light"] .settings-group,
+[data-theme="light"] .group-display,
+[data-theme="light"] .group-quiz,
+[data-theme="light"] .group-router { background: rgba(255,255,255,.86); border-color: rgba(27,24,32,.16); box-shadow: 0 8px 26px rgba(20,16,28,.06); }
+[data-theme="light"] .group-title { color: #1a1620; border-bottom-color: rgba(27,24,32,.12); }
+[data-theme="light"] .quiz-check, [data-theme="light"] .font-preview { color: #1a1620; }
+[data-theme="light"] .font-preview { background: #f6f4f8; border-color: rgba(27,24,32,.24); color: var(--accent-dark); }
+[data-theme="light"] .router-status { color: #5a5563; }
+[data-theme="light"] .login-label { color: #4a4654; }
+
+/* 登录卡片白天化（白天关掉背景图，提亮登录区） */
+[data-theme="light"] .login-overlay { background:
+    radial-gradient(80rem 60rem at 50% -10%, rgba(242,160,82,.12), transparent 60%),
+    linear-gradient(160deg, #f8f6fb 0%, #ece8f0 100%);
+}
+[data-theme="light"] .login-card { background: rgba(255,255,255,.94); border-color: rgba(27,24,32,.16); box-shadow: 0 20px 50px rgba(20,16,28,.18); }
+[data-theme="light"] .login-title { color: #1a1620; }
+[data-theme="light"] .login-subtitle, [data-theme="light"] .login-hint { color: #5a5563; }
+[data-theme="light"] .login-input { background: #fff; border-color: rgba(27,24,32,.24); color: #1a1620; }
+[data-theme="light"] .login-input::placeholder { color: #a29cab; }
+
+/* 播放器外壳与暗角减淡 */
+[data-theme="light"] #screen-player { background: #eceaf1; }
+[data-theme="light"] .bg-layer::after { background: linear-gradient(0deg, rgba(240,238,244,.5) 0%, transparent 30%); }
+[data-theme="light"] .chapter-bar { background: rgba(255,255,255,.8); color: #241f2e; border-color: rgba(27,24,32,.16); box-shadow: 0 4px 16px rgba(20,16,28,.1); }
+[data-theme="light"] .dialog-box { background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,246,250,.97)); border-color: rgba(27,24,32,.12); box-shadow: 0 12px 40px rgba(20,16,28,.14); }
+[data-theme="light"] .dialog-text, [data-theme="light"] .lecture .dialog-text { color: #1a1620; }
+[data-theme="light"] .control-bar { background: rgba(255,255,255,.92); border-top-color: rgba(27,24,32,.1); }
+[data-theme="light"] .ctl-btn { background: rgba(20,18,26,.05); border-color: rgba(27,24,32,.18); color: #4a4654; }
+[data-theme="light"] .ctl-btn:hover, [data-theme="light"] .control-primary .ctl-btn:hover { background: var(--accent); color: #17100a; border-color: var(--accent); }
+[data-theme="light"] .ctl-btn.active, [data-theme="light"] .control-primary .ctl-btn.active { background: var(--accent); color: #17100a; }
+[data-theme="light"] .ctl-sep { background: rgba(27,24,32,.16); }
+[data-theme="light"] .control-hint { color: #8a8494; }
+[data-theme="light"] .report-fab, [data-theme="light"] .lecture-fab, [data-theme="light"] .wrongbook-fab { background: rgba(255,255,255,.86); color: #241f2e; border-color: rgba(27,24,32,.18); box-shadow: 0 4px 14px rgba(20,16,28,.14); }
+[data-theme="light"] .report-fab:hover, [data-theme="light"] .lecture-fab:hover, [data-theme="light"] .wrongbook-fab:hover { background: var(--accent); color: #17100a; }
+
+/* 弹窗 / 存档 / 历史 / 报告 / 错题 / 编辑 */
+[data-theme="light"] .modal-card { background: linear-gradient(180deg, #ffffff, #f7f5fa); border-color: rgba(27,24,32,.14); box-shadow: 0 24px 60px rgba(20,16,28,.18); }
+[data-theme="light"] .modal-title, [data-theme="light"] .report-chart-title, [data-theme="light"] .stat-num { color: #1a1620; }
+[data-theme="light"] .modal-desc, [data-theme="light"] .report-desc, [data-theme="light"] .report-desc, [data-theme="light"] .slot-time,
+[data-theme="light"] .slot-info, [data-theme="light"] .slot-empty, [data-theme="light"] .stat-label, [data-theme="light"] .archive-section-hint,
+[data-theme="light"] .report-empty, [data-theme="light"] .wrong-desc { color: #5a5563; }
+[data-theme="light"] .slot-cell { background: #fff; border-color: rgba(27,24,32,.18); }
+[data-theme="light"] .slot-cell:hover { border-color: var(--accent); background: rgba(242,160,82,.06); }
+[data-theme="light"] .slot-name { color: #241f2e; }
+[data-theme="light"] .archive-current { background: rgba(242,160,82,.12); }
+[data-theme="light"] .htab-btn { color: #5a5563; }
+[data-theme="light"] .htab-bar { border-bottom-color: rgba(27,24,32,.12); }
+[data-theme="light"] .hist-item, [data-theme="light"] .archive-item, [data-theme="light"] .wrong-item, [data-theme="light"] .stat-tile, [data-theme="light"] .diag-item { background: #fff; border-color: rgba(27,24,32,.14); }
+[data-theme="light"] .diag-item:hover { background: #fdfaf5; }
+[data-theme="light"] .hist-item:hover, [data-theme="light"] .archive-item:hover { background: rgba(242,160,82,.06); }
+[data-theme="light"] .diag-summary, [data-theme="light"] .diag-prereq, [data-theme="light"] .diag-mastery-num { color: #5a5563; }
+[data-theme="light"] .diag-title, [data-theme="light"] .diag-action, [data-theme="light"] .diag-summary { color: #1a1620; }
+[data-theme="light"] .diag-mastery-track { background: #eceaeF; }
+[data-theme="light"] .slot-overwrite { background: rgba(242,160,82,.14); color: #a9661a; border-color: rgba(27,24,32,.2); }
+[data-theme="light"] .edit-textarea { background: #fbfaff; color: #2b2833; border-color: rgba(27,24,32,.2); }
+[data-theme="light"] .edit-error { background: #fdecea; border-color: #f0c1bb; }
+[data-theme="light"] .toast { background: rgba(20,16,28,.88); color: #fff; border-color: transparent; }
+
+/* 讲师白天化（复用 dialog 已翻白） */
+[data-theme="light"] #dialog-box.lecture-mode { background: linear-gradient(180deg, #ffffff, #f6f4f9); border-color: rgba(27,24,32,.12); }
+[data-theme="light"] #btn-lecture-close { background: transparent; color: #4a4654; border-color: rgba(27,24,32,.2); }
+[data-theme="light"] .lecture-chat .lec-tutor, [data-theme="light"] .lecture-history-bubbles .lec-tutor { background: #f3f0f6; color: #1a1620; border-color: rgba(27,24,32,.1); }
+[data-theme="light"] .lecture-chat .lec-user, [data-theme="light"] .lecture-history-bubbles .lec-user { color: #17100a; }

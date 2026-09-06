@@ -1,12 +1,21 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI视觉小说互动式学习系统</title>
+  <script>
+    // 主题记忆（白天=light / 黑夜=dark），在首帧前写入 <html data-theme>，避免闪烁
+    (function () {
+      try {
+        var t = localStorage.getItem("vn_theme");
+        if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="css/style.css?v=20260907a" />
   <!-- 「暗夜剧场」主题层：在布局源之后加载，覆盖视觉（不影响任何 JS/布局）。回滚：删除本行即可 -->
-  <link rel="stylesheet" href="css/theme.css?v=20260907c" />
+  <link rel="stylesheet" href="css/theme.css?v=20260907d" />
   <link rel="stylesheet" href="css/animations.css" />
   <!-- ECharts 改为按需加载：仅在打开「学习报告」面板时才注入 vendor/echarts.min.js，避免阻塞首屏 -->
 </head>
@@ -65,6 +74,8 @@
       </nav>
       <div class="menu-status" id="menu-status"></div>
     </div>
+    <!-- 主菜单左下角：白天 / 黑夜 主题切换 -->
+    <button type="button" class="theme-toggle-btn" id="btn-theme-menu" title="切换白天 / 黑夜主题" aria-label="切换白天黑夜主题"></button>
   </section>
 
   <!-- ═══════════ 开始学习 / 资料库 屏 ═══════════ -->
@@ -341,6 +352,9 @@
         <button class="btn-primary" id="modal-slots-close">关闭</button>
       </div>
     </div>
+
+    <!-- 游戏内左下角：白天 / 黑夜 主题切换 -->
+    <button type="button" class="theme-toggle-btn" id="btn-theme-player" title="切换白天 / 黑夜主题" aria-label="切换白天黑夜主题"></button>
   </section>
 
   <!-- 演示模式角标（P1：离线演示时提示当前为样例数据） -->
@@ -496,6 +510,7 @@
   <script src="js/render.js?v=20260904a"></script>
   <script src="js/streaming.js?v=20260907a"></script>
   <script src="js/lecture.js?v=20260906d"></script>
+  <script src="js/theme.js?v=20260907a"></script>
   <script src="js/app.js?v=20260907c"></script>
   <script src="js/login.js?v=20260906a"></script>
   <script src="js/history.js?v=20260831a"></script>
