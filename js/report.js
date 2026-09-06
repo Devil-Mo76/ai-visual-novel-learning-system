@@ -339,7 +339,7 @@
       });
     },
 
-    /* —— 思维导图：剧本 chapters → 章节标题 → 步骤台词/题目（知识点树）—— */
+    /* —— 知识点串联结构图：每个知识点作为一张卡片，按学习顺序串联起来，横向蛇形排布，一目了然 —— */
     _renderTree(scriptChapters) {
       const el = $("report-tree");
       this._disposeTree(el);
@@ -349,90 +349,106 @@
         return;
       }
       if (!scriptChapters || !scriptChapters.length) {
-        el.innerHTML = '<div style="color:var(--ink-soft);text-align:center;padding-top:60px">暂无可展示的剧本知识点结构</div>';
+        el.innerHTML = '<div style="color:var(--ink-soft);text-align:center;padding-top:60px">暂无可展示的知识点结构</div>';
         return;
       }
 
       const chart = echarts.init(el);
       this._treeChart = chart;
 
-      // —— 从章节的弹题中提取「考点」，构筑 资料 → 知识点 → 考点 的知识结构（不含角色对话）——
-      const knowledgeLeaves = (ch) => {
-        const q = (ch.steps || []).find((s) => s.type === "question");
-        if (!q) return [{ name: "未设考点", value: "考点" }];
-        switch (q.quiz_type) {
-          case "short":
-            return (q.reference_points || []).map((p) => ({ name: kw(String(p), 10), value: "考点" }));
-          case "fill":
-            return [{ name: kw(String(q.answer_text || ""), 10), value: "考点" }];
-          case "choice": {
-            const correct = (q.choices && q.choices[q.answer]) ? String(q.choices[q.answer]) : null;
-            if (correct) return [{ name: kw(correct, 10), value: "考点" }];
-            return (q.choices || []).slice(0, 2).map((c) => ({ name: kw(String(c), 9), value: "考点" }));
-          }
-          default:
-            return [{ name: kw(q.text || "考点", 10), value: "考点" }];
-        }
-      };
+      const n = scriptChapters.length;
+      const KW_MAX = 7;                       // 每张卡片标题截断到 ~7 字
+      const nodeTexts = scriptChapters.map((c, i) => kw(c.title || `知识点${i + 1}`, KW_MAX));
 
-      // 章节结点（知识点），每章一个关键词标题
-      const knowledgeNodes = scriptChapters.map((ch, i) => ({
-        name: `#${i + 1} ${kw(ch.title || "未命名", 10)}`,
-        children: knowledgeLeaves(ch),
-      }));
+      // —— 横向蛇形排布：每行约 4 张卡片（按容器宽自适应），偶数行左→右，奇数行右→左 ——
+      const colW = 196;
+      const perRow = Math.max(3, Math.floor((el.clientWidth || 1100) / colW));
+      const rowH = 88;
 
-      // 统一挂到一个虚拟根结点下 → 让 ECharts 以“一棵树”正确布局
-      // （若把多章平铺成多个根，章节一多会横向拉出画布、几乎不可读）
-      const rootData = {
-        name: "知识结构",
-        itemStyle: { color: "#f2a052" },   // 根结点用琥珀强调
-        children: knowledgeNodes,
-      };
+      const nodes = nodeTexts.map((text, idx) => {
+        const r = Math.floor(idx / perRow);
+        const c = idx % perRow;
+        const col = r % 2 === 0 ? c : perRow - 1 - c;
+        return {
+          id: "n" + idx,
+          name: `#${idx + 1}  ${text}`,
+          chapterTitle: scriptChapters[idx].title || "",
+          x: 28 + col * colW,
+          y: 24 + r * rowH,
+          symbol: "roundRect",
+          symbolSize: [colW - 20, 56],     // 每张卡片宽 ≈ colW-20，高 56
+          label: { show: true, position: "inside" },
+        };
+      });
+
+      const links = [];
+      for (let i = 0; i < n - 1; i++) {
+        links.push({ source: "n" + i, target: "n" + (i + 1) });
+      }
+
+      // 主题感知的卡片配色（深 / 浅）
+      const isLight = document.documentElement.getAttribute("data-theme") === "light";
+      const cardFill = isLight ? "#ffffff" : "#1e1b2c";
+      const cardBorder = isLight ? "#d98a35" : "#f2a052";
+      const cardLabel = isLight ? "#1a1620" : "#f2efe8";
+      const cardShadow = isLight ? "rgba(217,138,53,.22)" : "rgba(242,160,82,.3)";
+      const edgeColor = isLight ? "rgba(180,110,40,.55)" : "rgba(242,160,82,.65)";
+      const tooltipBg = isLight ? "#ffffff" : "#1b1a24";
+      const tooltipText = isLight ? "#241f2e" : "#f2efe8";
+      const tooltipBorder = isLight ? "rgba(27,24,32,.15)" : "rgba(242,239,232,.15)";
 
       chart.setOption({
         tooltip: {
-          trigger: "item",
-          triggerOn: "mousemove",
-          backgroundColor: "#1b1a24",
-          borderColor: "rgba(242,239,232,0.15)",
-          textStyle: { color: "#f2efe8", fontSize: 12 },
+          backgroundColor: tooltipBg,
+          borderColor: tooltipBorder,
+          textStyle: { color: tooltipText, fontSize: 12 },
           formatter: (p) => {
+            if (p.dataType === "edge") return "";
             const d = p.data;
-            return (d && d.value) ? `${d.name}` : `<b>${p.name}</b>`;
+            const full = d.chapterTitle || d.name;
+            return `<b>${d.name || ""}</b>${full && full !== d.name ? "<br/>" + full : ""}`;
           },
         },
         series: [
           {
-            type: "tree",
-            data: [rootData],          // 单根（关键修复）
-            left: 90,
-            right: 40,
-            top: 16,
-            bottom: 24,
-            symbol: "circle",
-            symbolSize: 7,
-            layout: "orthogonal",
-            orient: "LR",              // 从左往右：根在左，知识点/考点向右
-            initialTreeDepth: 1,       // 默认只展开到知识点一层，避免几十章全展开爆炸
-            roam: true,                // 可缩放/拖动
-            expandAndCollapse: true,   // 点击节点折叠/展开
-            color: ["#f2a052", "#9b8bd8", "#6f7fd8", "#5fb7ce"],  // 顶层知识点按序取色
+            type: "graph",
+            layout: "none",
+            data: nodes,
+            links,
+            roam: true,                // 可拖动 / 滚轮缩放
+            draggable: true,
+            edgeSymbol: ["none", "arrow"],
+            edgeSymbolSize: [0, 9],
             label: {
-              position: "left",
-              verticalAlign: "middle",
-              align: "right",
-              distance: 8,
+              show: true,
+              position: "inside",
               fontSize: 12,
-              color: "#d8d3e6",
+              fontWeight: 700,
+              color: cardLabel,
+              formatter: (p) => p.data.name,
             },
-            leaves: {
-              label: { position: "right", verticalAlign: "middle", align: "left", fontSize: 11, color: "#8f8aa2" },
+            lineStyle: {
+              color: edgeColor,
+              width: 2,
+              curveness: 0.0,           // 直连串联
+              opacity: .85,
             },
-            lineStyle: { color: "rgba(242,239,232,0.18)", width: 1, curveness: 0.5 },
             emphasis: {
-              focus: "descendant",
-              lineStyle: { color: "rgba(242,160,82,0.7)" },
+              focus: "adjacency",
+              itemStyle: { borderColor: isLight ? "#c96a12" : "#ffba6c", borderWidth: 3 },
+              lineStyle: { color: isLight ? "#c96a12" : "#ffba6c", width: 3 },
             },
+            itemStyle: {
+              color: cardFill,
+              borderColor: cardBorder,
+              borderWidth: 1.5,
+              shadowBlur: 14,
+              shadowColor: cardShadow,
+            },
+            top: 6,
+            bottom: 8,
+            left: 6,
+            right: 24,
           },
         ],
       });

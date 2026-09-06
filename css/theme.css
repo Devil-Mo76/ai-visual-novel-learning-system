@@ -407,9 +407,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .btn-report-diag.active { background: var(--accent); color: #17100a; box-shadow: 0 0 0 3px var(--accent-soft); }
 .report-diag-hint { font-size: 12px; color: var(--ink-soft); }
 
-/* 思维导图横跨整行，给树留出横向空间 */
+/* 知识点串联结构图：蛇形多行排布，需要更高一些的空间 */
 .report-card .tree-wrap { grid-column: 1 / -1; }
-.tree-wrap .report-tree { height: 360px; }
+.tree-wrap .report-tree { height: 460px; }
 .report-chart-wrap { margin-bottom: 0; min-width: 0; }
 
 /* 诊断面板 */
@@ -573,18 +573,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 [data-theme="light"] *::-webkit-scrollbar-thumb { background: rgba(120,110,150,.4); }
 [data-theme="light"] .modal { background: rgba(20,16,28,.4); }
 
-/* 主菜单：白底氛围（白天主题下不再叠加氛围图，避免亮背景压字） */
-[data-theme="light"] #screen-menu {
-  background:
-    radial-gradient(80rem 60rem at 78% -10%, rgba(242,160,82,.14), transparent 60%),
-    radial-gradient(70rem 52rem at -6% 20%, rgba(124,107,213,.12), transparent 60%),
-    linear-gradient(160deg, #f8f6fb 0%, #f1eef5 55%, #ece8f0 100%);
+/* 主菜单：白天显示「前端白天背景.png」，淡白遮罩保证黑字可读 */
+[data-theme="light"] #screen-menu { background: transparent; }
+[data-theme="light"] .menu-backdrop {
+  display: block;
+  background-image: url("../images/前端背景/前端白天背景.png");
+  background-size: cover; background-position: center;
 }
-[data-theme="light"] .menu-backdrop { display: none; }   /* 白天关掉背景图，提亮主菜单 */
-[data-theme="light"] .menu-title { color: #1a1620; text-shadow: none; }
+[data-theme="light"] .menu-backdrop::after {
+  background: linear-gradient(165deg, rgba(255,255,255,.66), rgba(255,255,255,.55));
+}
+[data-theme="light"] .menu-title { color: #14101a; text-shadow: 0 1px 6px rgba(255,255,255,.6); }
 [data-theme="light"] .menu-title::before { background: linear-gradient(90deg, var(--accent), transparent); }
-[data-theme="light"] .menu-subtitle { color: #5f5a68; }
-[data-theme="light"] .menu-btn { color: #241f2e; border-bottom-color: rgba(27,24,32,.14); }
+[data-theme="light"] .menu-subtitle { color: #3f3a49; }
+[data-theme="light"] .menu-btn { color: #241f2e; border-bottom-color: rgba(27,24,32,.16); }
 [data-theme="light"] .menu-btn:hover { color: #14101a; border-bottom-color: var(--accent); }
 [data-theme="light"] .menu-btn::after { background: var(--accent); }
 [data-theme="light"] .menu-status { color: #6a6574; }
@@ -595,11 +597,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 [data-theme="light"] .btn-back, [data-theme="light"] .btn-ghost { color: #4a4654; border-color: rgba(27,24,32,.2); }
 [data-theme="light"] .btn-back:hover, [data-theme="light"] .btn-ghost:hover { color: #14101a; background: var(--accent-soft); border-color: var(--accent); }
 
-/* 开始学习 / 设置屏背景：浅遮罩保留氛围图 */
+/* 开始学习 / 设置屏背景：白天用「前端白天背景.png」（浅色、无需深遮罩） */
 [data-theme="light"] #screen-library, [data-theme="light"] #screen-settings {
   background:
-    linear-gradient(rgba(255,255,255,.72), rgba(255,255,255,.72)),
-    url("../images/前端背景/前端背景.png");
+    linear-gradient(rgba(255,255,255,.30), rgba(255,255,255,.30)),
+    url("../images/前端背景/前端白天背景.png");
   background-size: cover; background-position: center;
 }
 
