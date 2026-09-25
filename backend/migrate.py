@@ -162,12 +162,13 @@ def _seed_demo_data(db) -> None:
 def _seed_user_id() -> int:
     """确保种子用户存在并返回其 id（幂等：已存在则直接返回）。"""
     with SessionLocal() as db:
+        from .auth import DEFAULT_PASSWORD, DEFAULT_USERNAME
         from .models import User
         from .security import hash_password
 
-        user = db.scalars(sa.select(User).where(User.username == "demo")).first()
+        user = db.scalars(sa.select(User).where(User.username == DEFAULT_USERNAME)).first()
         if user is None:
-            user = User(username="demo", password_hash=hash_password("demo123"))
+            user = User(username=DEFAULT_USERNAME, password_hash=hash_password(DEFAULT_PASSWORD))
             db.add(user)
             db.commit()
             db.refresh(user)

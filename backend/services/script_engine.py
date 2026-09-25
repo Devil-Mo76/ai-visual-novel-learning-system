@@ -122,7 +122,7 @@ SYSTEM_PROMPT = f"""{TEACHER_CARD}
 {{"title": 课程标题, "source": 资料名, "chapters": [{{"id": "ch_1", "title": 章节标题, "background": 背景key, "steps": [{{"type": "line", "speaker": "teacher|student", "text": 台词, "talk_emo": 表情标签, "listen_emo": 表情标签}} 或 {{"type": "question", "speaker": "...", "text": 题目, "talk_emo": 表情标签, "listen_emo": 表情标签, "quiz_type": "choice", "choices": [选项1, 选项2, ...], "answer": 正确下标, "explain": 讲评词}} 或 {{"type": "question", "speaker": "...", "text": 题目, "talk_emo": 表情标签, "listen_emo": 表情标签, "quiz_type": "fill", "answer_text": "参考答案", "explain": 讲评词}} 或 {{"type": "question", "speaker": "...", "text": 题目, "talk_emo": 表情标签, "listen_emo": 表情标签, "quiz_type": "short", "reference_points": ["要点1", "要点2"], "explain": 讲评词}}]}}]}}"""
 
 
-# ---------- AI 调用（SiliconFlow 中转站 / OpenAI 兼容）----------
+# ---------- AI 调用（OpenAI 兼容接口，默认 DeepSeek 官方 API）----------
 
 class _LLMClient:
     """统一入口：优先用 LangChain ChatOpenAI，未安装时回退 requests 直连。"""

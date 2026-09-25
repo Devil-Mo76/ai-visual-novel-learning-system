@@ -23,7 +23,9 @@ class Settings(BaseSettings):
     cors_origins: str = "*"         # 开发期放开，答辩可按需收窄
 
     # —— 用户认证（JWT）——
-    auth_secret: str = "vn-learning-demo-secret-change-me"   # 生产务必改用强随机值
+    # 通过环境变量 AUTH_SECRET 注入（.env）；未配置时进程启动时随机生成，
+    # 重启后旧 token 失效——本地演示可用，正式部署务必显式配置。
+    auth_secret: str = ""
     token_expire_minutes: int = 60 * 24 * 7                  # 默认 7 天有效期
 
     # —— 结构化日志（Loguru）——
@@ -45,3 +47,8 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# 未显式配置 AUTH_SECRET 时，进程内随机生成（不落盘、不写入代码库）。
+if not settings.auth_secret:
+    import secrets as _secrets
+    settings.auth_secret = _secrets.token_urlsafe(48)

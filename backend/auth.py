@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+import os
+
 from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 
@@ -19,8 +21,9 @@ from .security import decode_access_token, hash_password
 
 # 默认种子用户（user_id=1）：承载无 token（模拟登录）请求的全部数据；
 # 也是现有演示数据迁移后的归属用户。
-DEFAULT_USERNAME = "demo"
-DEFAULT_PASSWORD = "demo123"
+# 口令通过环境变量 DEMO_PASSWORD 注入；未配置时使用本地演示默认值。
+DEFAULT_USERNAME = os.getenv("DEMO_USERNAME", "demo")
+DEFAULT_PASSWORD = os.getenv("DEMO_PASSWORD", "demo123")
 
 
 def get_or_create_default_user(db: Session) -> User:

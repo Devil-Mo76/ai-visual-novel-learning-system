@@ -1136,7 +1136,7 @@ A：报告按 analytics 的 `chapter_index` 分组。若后续章节的作答没
 A：先 `Ctrl+F5` 强刷（确保加载新版 JS）；确认后端在跑且已有错题记录（`GET /api/scripts/{id}/wrong_questions`）；无错题时开关会自动回退并提示"暂无错题"。
 
 **Q：生成剧本很慢/一直重试？**
-A：AI 生成可能耗时数十秒；JSON 解析失败自动重试 3 次。最终失败：检查 API Key、网络、SiliconFlow 服务可用性。
+A：AI 生成可能耗时数十秒；JSON 解析失败自动重试 3 次。最终失败：检查 API Key、网络、DeepSeek 服务可用性。
 
 **Q：填空/简答判题卡死？**
 A：点「直接查看答案」绕过判题继续学习；判题请求短超时（100s）+ 512 token，正常很快。
@@ -1145,4 +1145,4 @@ A：点「直接查看答案」绕过判题继续学习；判题请求短超时�
 A：安装 `psycopg2-binary`，`.env` 配置 `DATABASE_URL=postgresql://...`。当前 SQLite 演示零配置。
 
 **Q：能改 AI 服务商或模型吗？**
-A：设置界面即可（API 地址/Key/模型）。默认 SiliconFlow 中转站的 DeepSeek。
+A：设置界面即可（API 地址/Key/模型）。默认 DeepSeek 官方 API（`https://api.deepseek.com`）。
