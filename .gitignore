@@ -32,3 +32,7 @@ mock_tests*/
 # IDE
 .vs/
 .idea/
+
+# AI 工具本地配置
+.agents/
+.claude/
