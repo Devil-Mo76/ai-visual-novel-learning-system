@@ -28,3 +28,7 @@ Thumbs.db
 # 测试残留
 mock_test.docx
 mock_tests*/
+
+# IDE
+.vs/
+.idea/

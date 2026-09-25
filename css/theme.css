@@ -259,12 +259,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .control-hint { color: rgba(183,177,194,.55); letter-spacing: .18em; }
 
 /* 悬浮按钮 */
-.report-fab, .lecture-fab, .wrongbook-fab {
+.report-fab, .lecture-fab, .wrongbook-fab, .mindmap-fab {
   background: rgba(13,12,19,0.86); border: 1px solid var(--line-strong);
   color: var(--accent-text); backdrop-filter: blur(8px); box-shadow: var(--shadow-2);
   letter-spacing: .06em;
 }
-.report-fab:hover, .lecture-fab:hover, .wrongbook-fab:hover { background: var(--accent); color: #17100a; border-color: var(--accent); }
+.report-fab:hover, .lecture-fab:hover, .wrongbook-fab:hover, .mindmap-fab:hover { background: var(--accent); color: #17100a; border-color: var(--accent); }
+/* 思维导图悬浮按钮：播放器右上第 3 个，紧挨错题本按钮下方 */
+.mindmap-fab {
+  position: absolute; right: 14px; top: 106px; z-index: 9; cursor: pointer;
+  font-size: 14px; padding: 10px 16px; border-radius: 999px;
+  transition: all .15s ease;
+}
 
 /* ============ 9. 弹题框 ============ */
 .question-box {
@@ -428,15 +434,19 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* 知识点掌握程度最大化：独占整行 + 更高 */
 .report-grid .mastery-main { grid-column: 1 / -1; }
-.mastery-main .report-echart { height: 380px; }
+.mastery-main .report-echart { height: 560px; }   /* 竖向拉伸，让各知识点行拉开不拥挤 */
+
+/* 各章节答题正确率：独占整行（满宽展开，同掌握度） */
+.report-grid .bar-main { grid-column: 1 / -1; }
+.bar-main .report-echart { height: 300px; }
 
 /* 图表通用 */
 .report-chart-wrap { margin-bottom: 0; min-width: 0; }
-.report-chart-wrap:not(.mastery-main):not(.tree-wrap) { grid-column: span 1; }
+.report-chart-wrap:not(.mastery-main):not(.bar-main):not(.tree-wrap):not(.answer-main) { grid-column: span 1; }
 .report-chart-title, .report-chart-sub { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: .04em; margin-bottom: 8px; }
 .report-chart-sub { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
 
-/* 作答情况分组：趋势 + 题型 上下并一块，占一列 */
+/* 作答情况分组（满宽展开）：每日趋势 + 题型分布 上下并块 */
 .report-answer-group {
   grid-column: span 1;
   background: rgba(255,255,255,.02);
@@ -444,12 +454,49 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-radius: var(--r-lg);
   padding: 14px 16px;
 }
+.report-grid .answer-main { grid-column: 1 / -1; }
 .report-answer-group .report-chart-title { margin-bottom: 4px; }
-.report-answer-group .report-echart { height: 190px; }
+.report-answer-group .report-echart { height: 210px; }
 
 /* 知识点辐射图独占整行 */
 .report-card .tree-wrap { grid-column: 1 / -1; }
-.tree-wrap .report-tree { height: 470px; }
+.tree-wrap .report-tree { height: 560px; }
+/* markmap 风格画板：圆角色块所在整块画布做成圆角浅紫面板 */
+.tree-wrap .report-tree { border-radius: 14px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(124,92,252,.16); }
+/* ── 真正 markmap 思维导图样式（本地 vendor/markmap）── */
+.tree-wrap .report-tree { position: relative; }
+.tree-wrap .report-tree svg.markmap { display: block; width: 100%; height: 100%; }
+.tree-wrap .report-tree .markmap { outline: none; }
+/* markmap 画板：紫调渐变 + 文字/字号/主题变量（浅色 → 黑字、深色 → 白字） */
+.tree-wrap .report-tree {
+  background: linear-gradient(135deg, #f6f4ff 0%, #edeaff 100%);
+  --markmap-font: 600 17px/1.7 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --markmap-text-color: #201a30;
+  --markmap-a-color: #6d5bd0;
+  --markmap-a-hover-color: #4a3aa8;
+  --markmap-code-bg: #efeaff;
+  --markmap-code-color: #463a5e;
+  --markmap-circle-open-bg: #d8cfff;
+}
+[data-theme="dark"] .tree-wrap .report-tree {
+  background: linear-gradient(135deg, #16131f 0%, #0f0d18 100%);
+  --markmap-font: 600 17px/1.7 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --markmap-text-color: #ffffff;
+  --markmap-a-color: #cfc6ff;
+  --markmap-a-hover-color: #a79bff;
+  --markmap-code-bg: #2a2a2a;
+  --markmap-code-color: #dddddd;
+  --markmap-circle-open-bg: #666666;
+}
+/* 强制节点文字色按主题统一：暗色=白、浅色=黑（覆盖 markmap 自动按对比度的逻辑） */
+[data-theme="dark"] .tree-wrap .report-tree .markmap,
+[data-theme="dark"] .tree-wrap .report-tree .markmap text,
+[data-theme="dark"] .tree-wrap .report-tree .markmap foreignObject,
+[data-theme="dark"] .tree-wrap .report-tree .markmap foreignObject * { color: #ffffff !important; }
+[data-theme="light"] .tree-wrap .report-tree .markmap,
+[data-theme="light"] .tree-wrap .report-tree .markmap text,
+[data-theme="light"] .tree-wrap .report-tree .markmap foreignObject,
+[data-theme="light"] .tree-wrap .report-tree .markmap foreignObject * { color: #000000 !important; }
 .report-empty { grid-column: 1 / -1; padding: 30px 0; text-align: center; color: var(--ink-soft); }
 .report-card #btn-report-close { grid-column: 1 / -1; justify-self: center; }
 
@@ -728,8 +775,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 [data-theme="light"] .ctl-btn.active, [data-theme="light"] .control-primary .ctl-btn.active { background: var(--accent); color: #17100a; }
 [data-theme="light"] .ctl-sep { background: rgba(27,24,32,.16); }
 [data-theme="light"] .control-hint { color: #8a8494; }
-[data-theme="light"] .report-fab, [data-theme="light"] .lecture-fab, [data-theme="light"] .wrongbook-fab { background: rgba(255,255,255,.86); color: #241f2e; border-color: rgba(27,24,32,.18); box-shadow: 0 4px 14px rgba(20,16,28,.14); }
-[data-theme="light"] .report-fab:hover, [data-theme="light"] .lecture-fab:hover, [data-theme="light"] .wrongbook-fab:hover { background: var(--accent); color: #17100a; }
+[data-theme="light"] .report-fab, [data-theme="light"] .lecture-fab, [data-theme="light"] .wrongbook-fab, [data-theme="light"] .mindmap-fab { background: rgba(255,255,255,.86); color: #241f2e; border-color: rgba(27,24,32,.18); box-shadow: 0 4px 14px rgba(20,16,28,.14); }
+[data-theme="light"] .report-fab:hover, [data-theme="light"] .lecture-fab:hover, [data-theme="light"] .wrongbook-fab:hover, [data-theme="light"] .mindmap-fab:hover { background: var(--accent); color: #17100a; }
 
 /* 弹窗 / 存档 / 历史 / 报告 / 错题 / 编辑 */
 [data-theme="light"] .modal-card { background: linear-gradient(180deg, #ffffff, #f7f5fa); border-color: rgba(27,24,32,.14); box-shadow: 0 24px 60px rgba(20,16,28,.18); }
@@ -759,3 +806,22 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 [data-theme="light"] #btn-lecture-close { background: transparent; color: #4a4654; border-color: rgba(27,24,32,.2); }
 [data-theme="light"] .lecture-chat .lec-tutor, [data-theme="light"] .lecture-history-bubbles .lec-tutor { background: #f3f0f6; color: #1a1620; border-color: rgba(27,24,32,.1); }
 [data-theme="light"] .lecture-chat .lec-user, [data-theme="light"] .lecture-history-bubbles .lec-user { color: #17100a; }
+
+/* ============ 15. 独立「思维导图」面板（markmap 画板） ============ */
+.mm-card { width: min(1500px, 96vw); max-height: 92vh; }
+.mm-container { position: relative; height: 66vh; border-radius: 14px; overflow: hidden;
+  background: linear-gradient(135deg, #f6f4ff 0%, #edeaff 100%);
+  --markmap-font: 600 17px/1.7 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --markmap-text-color: #201a30;
+  --markmap-code-bg: #efeaff; --markmap-code-color: #463a5e; --markmap-circle-open-bg: #d8cfff;
+  box-shadow: inset 0 0 0 1px rgba(124,92,252,.16);
+}
+.mm-container svg.markmap { display: block; width: 100%; height: 100%; outline: none; }
+[data-theme="dark"] .mm-container {
+  background: linear-gradient(135deg, #16131f 0%, #0f0d18 100%);
+  --markmap-text-color: #ffffff; --markmap-code-bg: #2a2a2a; --markmap-code-color: #ddd; --markmap-circle-open-bg: #666;
+}
+[data-theme="dark"] .mm-container .markmap, [data-theme="dark"] .mm-container .markmap text,
+[data-theme="dark"] .mm-container .markmap foreignObject, [data-theme="dark"] .mm-container .markmap foreignObject * { color: #ffffff !important; }
+[data-theme="light"] .mm-container .markmap, [data-theme="light"] .mm-container .markmap text,
+[data-theme="light"] .mm-container .markmap foreignObject, [data-theme="light"] .mm-container .markmap foreignObject * { color: #000000 !important; }

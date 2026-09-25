@@ -1,6 +1,22 @@
-# AI 视觉小说互动式学习系统
+# AI 视觉小说互动式学习系统 / AI Visual Novel Interactive Learning System
 
 **「把学习资料变成互动小说」** —— 基于 AI 生成"双人对话式教学剧本"的视觉小说学习平台。
+
+## 项目简介（中英双语 / Bilingual Introduction）
+
+**中文**
+
+本项目是一个将学习资料转化为「视觉小说」形态的 AI 互动式学习系统。用户上传 Word / PDF 学习资料后，云端大模型（DeepSeek V4）会自动解析正文，按主题考点切分成多个章节，并生成分章的「讲述者 · 提问者」双人对话教学剧本；用户以看小说的方式逐句推进剧情，每章末尾弹出选择题 / 填空题 / 简答题进行作答，由**云端-边缘混合模型路由层**完成判题讲评——短任务（判题、讲师短答）优先走本地 Qwen2.5-1.5B（llama-cpp-python 进程内 GGUF 推理，纯离线），长任务（剧本生成）走云端 DeepSeek，并具备熔断降级与断网自动回切能力。系统还提供：本地知识库（RAG）检索增强判题与讲解、SSE 流式「讲师」一对一辅导、学习报告（雷达图 + 柱状图 + 思维导图 + 薄弱知识点诊断）、「只看错题」针对性复习、存档系统与剧本编辑器。
+
+**技术栈**：原生 HTML/CSS/JavaScript（无前端框架）+ FastAPI + SQLAlchemy/SQLite + ECharts + LangChain + llama-cpp-python（本地 Qwen2.5-1.5B）+ DeepSeek V4（云端）。
+
+**English**
+
+This project is an AI-powered interactive learning system that turns study materials into a *visual novel*. After the user uploads a Word / PDF document, a cloud LLM (DeepSeek V4) parses the text, splits it into chapters by topic, and generates a two-character "Narrator · Questioner" dialogue script for each chapter. The user plays through the novel line by line and answers a multiple-choice / fill-in-the-blank / short-answer question at the end of each chapter, graded by a **hybrid cloud–edge LLM routing layer** — short tasks (grading, tutor replies) are handled locally by Qwen2.5-1.5B (in-process GGUF inference via llama-cpp-python, fully offline), while long tasks (script generation) go to cloud DeepSeek, with circuit-breaker fallback and automatic recovery when the network is restored. The system also provides: a local knowledge base (RAG) that grounds grading and tutoring, SSE-streamed one-on-one tutoring, a learning report (radar chart + bar chart + mind map + weak-point diagnosis), a "wrong-questions-only" review mode, save slots, and a script editor.
+
+**Tech stack**: Vanilla HTML/CSS/JavaScript (no frontend framework) + FastAPI + SQLAlchemy/SQLite + ECharts + LangChain + llama-cpp-python (local Qwen2.5-1.5B) + DeepSeek V4 (cloud).
+
+---
 
 > 设计定位：将枯燥的学习资料转化为「讲述者 · 提问者」双人互动的视觉小说。AI 依据用户上传的 Word / PDF 资料自动生成分章剧本，用户以"看小说 + 弹题作答"的方式吸收知识点；遇到疑难可随时召唤「讲师」一对一深度辅导；学习后可查看雷达图/柱状图学习报告、开启「只看错题」针对性复习、编辑剧本内容。
 >
