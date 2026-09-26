@@ -1,4 +1,5 @@
 # AI 视觉小说互动式学习系统 / AI Visual Novel Interactive Learning System
+![Uploading fe1426cf71d46d1321f34c405254348f.png…]()
 
 **「把学习资料变成互动小说」** —— 基于 AI 生成"双人对话式教学剧本"的视觉小说学习平台。
 
