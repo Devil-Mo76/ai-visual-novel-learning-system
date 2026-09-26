@@ -1,9 +1,7 @@
 <img width="2120" height="949" alt="31fae9a6e5fac6f41bcd75bc6591cf1c" src="https://github.com/user-attachments/assets/432caf9d-f4bc-4f44-bc60-6190be4a49e6" /># AI 视觉小说互动式学习系统 / AI Visual Novel Interactive Learning System
-<img width="2560" height="1380" alt="fe1426cf71d46d1321f34c405254348f" src="https://github.com/user-attachments/assets/89b7fc31-4ac6-4dd6-8c50-335476125c9e" />
-
 
 **「把学习资料变成互动小说」** —— 基于 AI 生成"双人对话式教学剧本"的视觉小说学习平台。
-<img width="2120" height="949" alt="31fae9a6e5fac6f41bcd75bc6591cf1c" src="https://github.com/user-attachments/assets/f55e872a-3ae1-4005-8523-ca204f7aa910" />
+
 
 ## 项目简介（中英双语 / Bilingual Introduction）
 
@@ -25,7 +23,7 @@ This project is an AI-powered interactive learning system that turns study mater
 > 设计定位：将枯燥的学习资料转化为「讲述者 · 提问者」双人互动的视觉小说。AI 依据用户上传的 Word / PDF 资料自动生成分章剧本，用户以"看小说 + 弹题作答"的方式吸收知识点；遇到疑难可随时召唤「讲师」一对一深度辅导；学习后可查看雷达图/柱状图学习报告、开启「只看错题」针对性复习、编辑剧本内容。
 >
 > 全程中文界面，角色为虚构人物（二阶堂希罗 / 樱羽艾玛），不含任何真实人物信息。
-
+<img width="2120" height="949" alt="31fae9a6e5fac6f41bcd75bc6591cf1c" src="https://github.com/user-attachments/assets/f55e872a-3ae1-4005-8523-ca204f7aa910" />
 ---
 
 ## 目录
