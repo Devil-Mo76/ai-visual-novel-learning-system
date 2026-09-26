@@ -1,13 +1,16 @@
-# AI 视觉小说互动式学习系统 / AI Visual Novel Interactive Learning System
-![Uploading fe1426cf71d46d1321f34c405254348f.png…]()
+<img width="2120" height="949" alt="31fae9a6e5fac6f41bcd75bc6591cf1c" src="https://github.com/user-attachments/assets/432caf9d-f4bc-4f44-bc60-6190be4a49e6" /># AI 视觉小说互动式学习系统 / AI Visual Novel Interactive Learning System
+<img width="2560" height="1380" alt="fe1426cf71d46d1321f34c405254348f" src="https://github.com/user-attachments/assets/89b7fc31-4ac6-4dd6-8c50-335476125c9e" />
+
 
 **「把学习资料变成互动小说」** —— 基于 AI 生成"双人对话式教学剧本"的视觉小说学习平台。
+<img width="2120" height="949" alt="31fae9a6e5fac6f41bcd75bc6591cf1c" src="https://github.com/user-attachments/assets/f55e872a-3ae1-4005-8523-ca204f7aa910" />
 
 ## 项目简介（中英双语 / Bilingual Introduction）
 
 **中文**
 
 本项目是一个将学习资料转化为「视觉小说」形态的 AI 互动式学习系统。用户上传 Word / PDF 学习资料后，云端大模型（DeepSeek V4）会自动解析正文，按主题考点切分成多个章节，并生成分章的「讲述者 · 提问者」双人对话教学剧本；用户以看小说的方式逐句推进剧情，每章末尾弹出选择题 / 填空题 / 简答题进行作答，由**云端-边缘混合模型路由层**完成判题讲评——短任务（判题、讲师短答）优先走本地 Qwen2.5-1.5B（llama-cpp-python 进程内 GGUF 推理，纯离线），长任务（剧本生成）走云端 DeepSeek，并具备熔断降级与断网自动回切能力。系统还提供：本地知识库（RAG）检索增强判题与讲解、SSE 流式「讲师」一对一辅导、学习报告（雷达图 + 柱状图 + 思维导图 + 薄弱知识点诊断）、「只看错题」针对性复习、存档系统与剧本编辑器。
+<img width="817" height="397" alt="f73e10f4c06722957d4fc3e4a0616338" src="https://github.com/user-attachments/assets/d5febfed-2a84-42db-9ddf-cb946bc030d9" />
 
 **技术栈**：原生 HTML/CSS/JavaScript（无前端框架）+ FastAPI + SQLAlchemy/SQLite + ECharts + LangChain + llama-cpp-python（本地 Qwen2.5-1.5B）+ DeepSeek V4（云端）。
 
